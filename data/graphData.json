@@ -1,0 +1,664 @@
+{
+  "nodes": [
+    {
+      "id": "C1_A1",
+      "label": "AI impact on architecture",
+      "cluster": "C1",
+      "xp": 20,
+      "deps": []
+    },
+    {
+      "id": "C1_A2",
+      "label": "New developer profile",
+      "cluster": "C1",
+      "xp": 10,
+      "deps": ["C1_A1"]
+    },
+    {
+      "id": "C1_A3",
+      "label": "Evolving architect role",
+      "cluster": "C1",
+      "xp": 10,
+      "deps": ["C1_A2"]
+    },
+    {
+      "id": "C1_A4",
+      "label": "AI as a software component",
+      "cluster": "C1",
+      "xp": 15,
+      "deps": ["C1_A1", "C1_A2", "C1_A3"]
+    },
+    {
+      "id": "C1_A5",
+      "label": "Business & ROI for AI",
+      "cluster": "C1",
+      "xp": 10,
+      "deps": ["C1_A4"]
+    },
+
+    {
+      "id": "C2_A1",
+      "label": "What is an AI Agent",
+      "cluster": "C2",
+      "xp": 20,
+      "deps": ["C1_A1"]
+    },
+    {
+      "id": "C2_A2",
+      "label": "Microservices vs AI agents",
+      "cluster": "C2",
+      "xp": 15,
+      "deps": ["C2_A1"]
+    },
+    {
+      "id": "C2_A3",
+      "label": "Agent components",
+      "cluster": "C2",
+      "xp": 20,
+      "deps": ["C2_A1", "C1_A4"]
+    },
+    {
+      "id": "C2_A4",
+      "label": "Agent orchestration",
+      "cluster": "C2",
+      "xp": 25,
+      "deps": ["C2_A3"]
+    },
+    {
+      "id": "C2_A5",
+      "label": "MCP fundamentals",
+      "cluster": "C2",
+      "xp": 15,
+      "deps": ["C2_A3"]
+    },
+    {
+      "id": "C2_A6",
+      "label": "ACP fundamentals",
+      "cluster": "C2",
+      "xp": 15,
+      "deps": ["C2_A5"]
+    },
+    {
+      "id": "C2_A7",
+      "label": "A2A communication",
+      "cluster": "C2",
+      "xp": 15,
+      "deps": ["C2_A5", "C2_A6"]
+    },
+    {
+      "id": "C2_A8",
+      "label": "Agent tool-use patterns",
+      "cluster": "C2",
+      "xp": 20,
+      "deps": ["C2_A4"]
+    },
+
+    {
+      "id": "C3_A1",
+      "label": "12-Factor Agent",
+      "cluster": "C3",
+      "xp": 20,
+      "deps": []
+    },
+    {
+      "id": "C3_A2",
+      "label": "Hand-crafted prompts",
+      "cluster": "C3",
+      "xp": 15,
+      "deps": ["C6_A1"]
+    },
+    {
+      "id": "C3_A3",
+      "label": "JSON I/O enforcement",
+      "cluster": "C3",
+      "xp": 15,
+      "deps": ["C3_A2"]
+    },
+    {
+      "id": "C3_A4",
+      "label": "Stateless agents & external state",
+      "cluster": "C3",
+      "xp": 20,
+      "deps": ["C3_A3"]
+    },
+    {
+      "id": "C3_A5",
+      "label": "Small specialized agents",
+      "cluster": "C3",
+      "xp": 15,
+      "deps": ["C3_A4"]
+    },
+    {
+      "id": "C3_A6",
+      "label": "ReAct prompting",
+      "cluster": "C3",
+      "xp": 20,
+      "deps": ["C6_A1"]
+    },
+    {
+      "id": "C3_A7",
+      "label": "Chain-of-Thought",
+      "cluster": "C3",
+      "xp": 20,
+      "deps": ["C6_A1"]
+    },
+    {
+      "id": "C3_A8",
+      "label": "Guardrail pattern",
+      "cluster": "C3",
+      "xp": 25,
+      "deps": ["C3_A2", "C5_A8"]
+    },
+    {
+      "id": "C3_A9",
+      "label": "Tool invocation pattern",
+      "cluster": "C3",
+      "xp": 20,
+      "deps": ["C3_A8"]
+    },
+    {
+      "id": "C3_A10",
+      "label": "Human-in-the-loop",
+      "cluster": "C3",
+      "xp": 15,
+      "deps": ["C3_A9"]
+    },
+
+    {
+      "id": "C4_A1",
+      "label": "Caching basics",
+      "cluster": "C4",
+      "xp": 15,
+      "deps": []
+    },
+    {
+      "id": "C4_A2",
+      "label": "Invalidation strategies",
+      "cluster": "C4",
+      "xp": 15,
+      "deps": ["C4_A1"]
+    },
+    {
+      "id": "C4_A3",
+      "label": "Eviction policies",
+      "cluster": "C4",
+      "xp": 15,
+      "deps": ["C4_A1"]
+    },
+    {
+      "id": "C4_A4",
+      "label": "LLM response caching",
+      "cluster": "C4",
+      "xp": 20,
+      "deps": ["C4_A1"]
+    },
+    {
+      "id": "C4_A5",
+      "label": "Embedding caching",
+      "cluster": "C4",
+      "xp": 15,
+      "deps": ["C7_A5", "C4_A4"]
+    },
+    {
+      "id": "C4_A6",
+      "label": "Token-level caching",
+      "cluster": "C4",
+      "xp": 20,
+      "deps": ["C4_A4"]
+    },
+    {
+      "id": "C4_A7",
+      "label": "Fingerprinting for cache keys",
+      "cluster": "C4",
+      "xp": 15,
+      "deps": ["C4_A5", "C4_A6"]
+    },
+    {
+      "id": "C4_A8",
+      "label": "Staleness management",
+      "cluster": "C4",
+      "xp": 15,
+      "deps": ["C4_A7"]
+    },
+
+    {
+      "id": "C5_A1",
+      "label": "Prompt injection",
+      "cluster": "C5",
+      "xp": 20,
+      "deps": ["C1_A5"]
+    },
+    {
+      "id": "C5_A2",
+      "label": "Output injection",
+      "cluster": "C5",
+      "xp": 15,
+      "deps": ["C5_A1"]
+    },
+    {
+      "id": "C5_A3",
+      "label": "Sensitive data protection",
+      "cluster": "C5",
+      "xp": 20,
+      "deps": ["C5_A1", "C5_A2"]
+    },
+    {
+      "id": "C5_A4",
+      "label": "OWASP LLM Top 10",
+      "cluster": "C5",
+      "xp": 15,
+      "deps": ["C5_A3"]
+    },
+    {
+      "id": "C5_A5",
+      "label": "Model DoS prevention",
+      "cluster": "C5",
+      "xp": 15,
+      "deps": ["C5_A4"]
+    },
+    {
+      "id": "C5_A6",
+      "label": "Supply chain & integrity",
+      "cluster": "C5",
+      "xp": 15,
+      "deps": ["C5_A4"]
+    },
+    {
+      "id": "C5_A7",
+      "label": "Excessive agency mitigation",
+      "cluster": "C5",
+      "xp": 15,
+      "deps": ["C5_A4"]
+    },
+    {
+      "id": "C5_A8",
+      "label": "Moderation & output filtering",
+      "cluster": "C5",
+      "xp": 20,
+      "deps": ["C5_A5", "C5_A6", "C5_A7"]
+    },
+    {
+      "id": "C5_A9",
+      "label": "Allow-list / proxy for tools",
+      "cluster": "C5",
+      "xp": 15,
+      "deps": ["C5_A8"]
+    },
+    {
+      "id": "C5_A10",
+      "label": "Sandboxing AI-generated code",
+      "cluster": "C5",
+      "xp": 20,
+      "deps": ["C5_A9"]
+    },
+    {
+      "id": "C5_A11",
+      "label": "Continuous red-teaming",
+      "cluster": "C5",
+      "xp": 15,
+      "deps": ["C5_A10"]
+    },
+
+    {
+      "id": "C6_A1",
+      "label": "Effective prompt writing",
+      "cluster": "C6",
+      "xp": 25,
+      "deps": ["C1_A4"]
+    },
+    {
+      "id": "C6_A2",
+      "label": "Few-shot prompting",
+      "cluster": "C6",
+      "xp": 15,
+      "deps": ["C6_A1"]
+    },
+    {
+      "id": "C6_A3",
+      "label": "Delimiters for disambiguation",
+      "cluster": "C6",
+      "xp": 10,
+      "deps": ["C6_A1"]
+    },
+    {
+      "id": "C6_A4",
+      "label": "Output format enforcement",
+      "cluster": "C6",
+      "xp": 15,
+      "deps": ["C6_A1"]
+    },
+    {
+      "id": "C6_A5",
+      "label": "Multi-turn context management",
+      "cluster": "C6",
+      "xp": 20,
+      "deps": ["C6_A2", "C6_A3", "C6_A4"]
+    },
+    {
+      "id": "C6_A6",
+      "label": "Prompt templates with placeholders",
+      "cluster": "C6",
+      "xp": 15,
+      "deps": ["C6_A5"]
+    },
+    {
+      "id": "C6_A7",
+      "label": "Prompt versioning & history",
+      "cluster": "C6",
+      "xp": 15,
+      "deps": ["C6_A6"]
+    },
+    {
+      "id": "C6_A8",
+      "label": "Context length strategies",
+      "cluster": "C6",
+      "xp": 15,
+      "deps": ["C6_A5", "C6_A7"]
+    },
+    {
+      "id": "C6_A9",
+      "label": "Retrieval of relevant context",
+      "cluster": "C6",
+      "xp": 20,
+      "deps": ["C6_A8"]
+    },
+    {
+      "id": "C6_A10",
+      "label": "Dynamic context windowing",
+      "cluster": "C6",
+      "xp": 15,
+      "deps": ["C6_A9"]
+    },
+    {
+      "id": "C6_A11",
+      "label": "Summarization for compression",
+      "cluster": "C6",
+      "xp": 15,
+      "deps": ["C6_A10"]
+    },
+
+    {
+      "id": "C7_A1",
+      "label": "AI-aware system design",
+      "cluster": "C7",
+      "xp": 25,
+      "deps": ["C2_A4"]
+    },
+    {
+      "id": "C7_A2",
+      "label": "Throughput vs latency",
+      "cluster": "C7",
+      "xp": 20,
+      "deps": ["C7_A1", "C4_A1", "C6_A1"]
+    },
+    {
+      "id": "C7_A3",
+      "label": "Model selection (Q/C/L)",
+      "cluster": "C7",
+      "xp": 20,
+      "deps": ["C7_A2", "C10_A2"]
+    },
+    {
+      "id": "C7_A4",
+      "label": "RAG architecture",
+      "cluster": "C7",
+      "xp": 30,
+      "deps": ["C7_A3", "C6_A9"]
+    },
+    {
+      "id": "C7_A5",
+      "label": "Vector DB fundamentals",
+      "cluster": "C7",
+      "xp": 20,
+      "deps": ["C7_A4"]
+    },
+    {
+      "id": "C7_A6",
+      "label": "Embedding version compatibility",
+      "cluster": "C7",
+      "xp": 15,
+      "deps": ["C7_A5"]
+    },
+    {
+      "id": "C7_A7",
+      "label": "Chunking strategies",
+      "cluster": "C7",
+      "xp": 15,
+      "deps": ["C7_A6"]
+    },
+    {
+      "id": "C7_A8",
+      "label": "Ranking / filtering",
+      "cluster": "C7",
+      "xp": 15,
+      "deps": ["C7_A7"]
+    },
+    {
+      "id": "C7_A9",
+      "label": "Async workflows & queues",
+      "cluster": "C7",
+      "xp": 20,
+      "deps": ["C7_A2"]
+    },
+    {
+      "id": "C7_A10",
+      "label": "Streaming responses",
+      "cluster": "C7",
+      "xp": 15,
+      "deps": ["C7_A9", "C6_A4"]
+    },
+    {
+      "id": "C7_A11",
+      "label": "Failover strategies",
+      "cluster": "C7",
+      "xp": 20,
+      "deps": ["C7_A2", "C7_A3", "C7_A4", "C5_A7"]
+    },
+    {
+      "id": "C7_A12",
+      "label": "Cloud AI services",
+      "cluster": "C7",
+      "xp": 15,
+      "deps": ["C7_A1"]
+    },
+
+    {
+      "id": "C8_A1",
+      "label": "AI-specific logging",
+      "cluster": "C8",
+      "xp": 15,
+      "deps": ["C7_A1"]
+    },
+    {
+      "id": "C8_A2",
+      "label": "Privacy in logs",
+      "cluster": "C8",
+      "xp": 10,
+      "deps": ["C8_A1"]
+    },
+    {
+      "id": "C8_A3",
+      "label": "Distributed tracing",
+      "cluster": "C8",
+      "xp": 15,
+      "deps": ["C8_A1"]
+    },
+    {
+      "id": "C8_A4",
+      "label": "Token tracking & dashboards",
+      "cluster": "C8",
+      "xp": 15,
+      "deps": ["C8_A3", "C10_A3"]
+    },
+    {
+      "id": "C8_A5",
+      "label": "Cache hit/miss monitoring",
+      "cluster": "C8",
+      "xp": 10,
+      "deps": ["C8_A4", "C4_A1", "C4_A8"]
+    },
+    {
+      "id": "C8_A6",
+      "label": "User feedback loop",
+      "cluster": "C8",
+      "xp": 10,
+      "deps": ["C8_A4"]
+    },
+    {
+      "id": "C8_A7",
+      "label": "Automatic eval tools",
+      "cluster": "C8",
+      "xp": 15,
+      "deps": ["C8_A6"]
+    },
+    {
+      "id": "C8_A8",
+      "label": "Regression testing (prompts)",
+      "cluster": "C8",
+      "xp": 15,
+      "deps": ["C8_A7"]
+    },
+    {
+      "id": "C8_A9",
+      "label": "Alerting on anomalies",
+      "cluster": "C8",
+      "xp": 10,
+      "deps": ["C8_A8"]
+    },
+
+    {
+      "id": "C9_A1",
+      "label": "Prompt unit tests",
+      "cluster": "C9",
+      "xp": 15,
+      "deps": ["C6_A6", "C8_A7"]
+    },
+    {
+      "id": "C9_A2",
+      "label": "Snapshot testing",
+      "cluster": "C9",
+      "xp": 15,
+      "deps": ["C9_A1", "C8_A7"]
+    },
+    {
+      "id": "C9_A3",
+      "label": "Semantic similarity eval",
+      "cluster": "C9",
+      "xp": 15,
+      "deps": ["C9_A1"]
+    },
+    {
+      "id": "C9_A4",
+      "label": "Synthetic dataset gen",
+      "cluster": "C9",
+      "xp": 15,
+      "deps": ["C9_A3"]
+    },
+    {
+      "id": "C9_A5",
+      "label": "Human-in-the-loop eval",
+      "cluster": "C9",
+      "xp": 15,
+      "deps": ["C9_A4"]
+    },
+    {
+      "id": "C9_A6",
+      "label": "Handling non-determinism",
+      "cluster": "C9",
+      "xp": 20,
+      "deps": ["C9_A3", "C9_A4", "C9_A5"]
+    },
+    {
+      "id": "C9_A7",
+      "label": "A/B testing prompts & models",
+      "cluster": "C9",
+      "xp": 15,
+      "deps": ["C9_A6"]
+    },
+    {
+      "id": "C9_A8",
+      "label": "Quality metrics for outputs",
+      "cluster": "C9",
+      "xp": 15,
+      "deps": ["C9_A7"]
+    },
+    {
+      "id": "C9_A9",
+      "label": "Bias & fairness testing",
+      "cluster": "C9",
+      "xp": 15,
+      "deps": ["C9_A8"]
+    },
+
+    {
+      "id": "C10_A1",
+      "label": "Token pricing models",
+      "cluster": "C10",
+      "xp": 15,
+      "deps": []
+    },
+    {
+      "id": "C10_A2",
+      "label": "Estimating AI usage costs",
+      "cluster": "C10",
+      "xp": 15,
+      "deps": ["C10_A1"]
+    },
+    {
+      "id": "C10_A3",
+      "label": "Cost dashboards & alerts",
+      "cluster": "C10",
+      "xp": 20,
+      "deps": ["C10_A2"]
+    },
+    {
+      "id": "C10_A4",
+      "label": "Caching for cost reduction",
+      "cluster": "C10",
+      "xp": 15,
+      "deps": ["C10_A3", "C4_A4"]
+    },
+    {
+      "id": "C10_A5",
+      "label": "Dynamic model routing",
+      "cluster": "C10",
+      "xp": 20,
+      "deps": ["C10_A3"]
+    },
+    {
+      "id": "C10_A6",
+      "label": "Prompt optimization (token)",
+      "cluster": "C10",
+      "xp": 15,
+      "deps": ["C10_A5"]
+    },
+    {
+      "id": "C10_A7",
+      "label": "Output length control",
+      "cluster": "C10",
+      "xp": 10,
+      "deps": ["C10_A6"]
+    },
+    {
+      "id": "C10_A8",
+      "label": "Input truncation & summarization",
+      "cluster": "C10",
+      "xp": 10,
+      "deps": ["C10_A7"]
+    },
+    {
+      "id": "C10_A9",
+      "label": "Cost-per-feature/user analysis",
+      "cluster": "C10",
+      "xp": 15,
+      "deps": ["C10_A4", "C10_A5", "C10_A6", "C10_A8"]
+    },
+    {
+      "id": "C10_A10",
+      "label": "Open-source model substitution",
+      "cluster": "C10",
+      "xp": 15,
+      "deps": ["C10_A9"]
+    }
+  ]
+}

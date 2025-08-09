@@ -1,0 +1,35 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* simple theming helpers */
+.card {
+  @apply rounded-2xl border bg-white shadow-sm;
+}
+.btn {
+  @apply inline-flex items-center justify-center rounded-md border px-3 py-2 text-sm font-medium;
+}
+.btn-primary {
+  @apply bg-neutral-900 text-white border-neutral-900 hover:opacity-90;
+}
+.btn-outline {
+  @apply border-neutral-300 text-neutral-800 hover:bg-neutral-50;
+}
+.badge {
+  @apply inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-xs;
+}
+.input {
+  @apply w-full rounded-md border border-neutral-300 px-3 py-2 text-sm;
+}
+.checkbox {
+  @apply h-4 w-4 rounded border border-neutral-300;
+}
+.select {
+  @apply w-full rounded-md border border-neutral-300 px-3 py-2 text-sm bg-white;
+}
+.progress {
+  @apply h-2 w-full overflow-hidden rounded bg-neutral-200;
+}
+.progress > span {
+  @apply block h-full bg-neutral-900;
+}
