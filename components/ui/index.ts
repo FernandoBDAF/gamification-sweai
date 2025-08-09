@@ -2,3 +2,6 @@ export { Card } from "./Card";
 export { Button } from "./Button";
 export { Badge } from "./Badge";
 export { Confetti } from "./Confetti";
+export { Panel, usePanelControls } from "./Panel";
+export { ResponsiveSidebar } from "./ResponsiveSidebar";
+export { Tooltip } from "./Tooltip";

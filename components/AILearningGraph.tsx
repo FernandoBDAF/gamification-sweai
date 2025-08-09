@@ -1,15 +1,7 @@
 "use client";
 
 import React, { useMemo, useState, useEffect, useCallback } from "react";
-import ReactFlow, {
-  Background,
-  Controls,
-  MiniMap,
-  Node,
-  Edge,
-  Position,
-  ReactFlowProvider,
-} from "reactflow";
+import { ReactFlowProvider } from "reactflow";
 import "reactflow/dist/style.css";
 
 import graphData from "@/data/graphData.json";
@@ -24,24 +16,20 @@ import {
   clusterCompletion,
 } from "@/lib/gamification";
 import { TopicNode, GraphData, ViewMode } from "@/lib/types";
-import {
-  getLayoutedElements,
-  getClusterLayoutedElements,
-} from "@/lib/graphLayout";
 
 // Components
-import { CardNode, CardNodeData, DependencyMatrix } from "@/components/graph";
+import { DependencyGraph, DependencyMatrix } from "@/components/graph";
 import {
   ProgressPanel,
   FilterPanel,
+  ClusterFilterPanel,
+  GoalPanel,
   ClusterBadgesPanel,
   DataPanel,
   ViewPanel,
 } from "@/components/panels";
 import { KeyboardShortcutsPanel } from "@/components/panels/KeyboardShortcutsPanel";
-import { Confetti } from "@/components/ui";
-
-const nodeTypes = { card: CardNode };
+import { Confetti, ResponsiveSidebar, usePanelControls } from "@/components/ui";
 
 function AILearningGraphFlow() {
   const data = graphData as GraphData;
@@ -54,6 +42,33 @@ function AILearningGraphFlow() {
   const [view, setView] = useState<ViewMode>("tree");
   const [compact, setCompact] = useState<boolean>(false);
   const [showConfetti, setShowConfetti] = useState<boolean>(false);
+
+  // Add missing state for view level and cluster style controls
+  const [viewLevel, setViewLevel] = useState<"overview" | "cluster" | "detail">(
+    "cluster"
+  );
+  const [clusterStyle, setClusterStyle] = useState<string>("background");
+  const [layoutDirection, setLayoutDirection] = useState<"TB" | "LR">("TB");
+
+  // Get compact mode from panel controls
+  const { compactMode } = usePanelControls();
+
+  // Helper function to get cluster display name
+  const getClusterDisplayName = (clusterId: string) => {
+    const clusterNames: Record<string, string> = {
+      C1: "Architecture & AI Impact",
+      C2: "Prompt Engineering",
+      C3: "AI Development Tools",
+      C4: "Machine Learning Foundations",
+      C5: "AI Ethics & Safety",
+      C6: "Data Engineering",
+      C7: "AI Integration Patterns",
+      C8: "Performance & Optimization",
+      C9: "AI Testing & Validation",
+      C10: "Advanced AI Systems",
+    };
+    return clusterNames[clusterId] || clusterId;
+  };
 
   // Load & persist progress, update daily streak
   useEffect(() => setProgress((_) => updateDailyStreak(loadProgress())), []);
@@ -131,13 +146,6 @@ function AILearningGraphFlow() {
     return map;
   }, [data]);
 
-  const statuses = useMemo(() => {
-    const s: Record<string, any> = {};
-    for (const n of data.nodes)
-      s[n.id] = computeStatus(n.id, n.deps, progress.completed);
-    return s;
-  }, [data.nodes, progress.completed]);
-
   const byClusterCompletion = useMemo(
     () => clusterCompletion(progress.completed, topicsByCluster),
     [progress.completed, topicsByCluster]
@@ -192,10 +200,10 @@ function AILearningGraphFlow() {
     setGoalId(id);
   }, []);
 
-  // Filter nodes based on current settings
+  // Filter nodes for display (used by both graph and matrix views)
   const filteredNodes = useMemo(() => {
     return data.nodes.filter((n) => {
-      const status = statuses[n.id];
+      const status = computeStatus(n.id, n.deps, progress.completed);
       const includeByCluster =
         clusterFilter === "ALL" || n.cluster === clusterFilter;
       const includeByStatus = !hideCompleted || status !== "completed";
@@ -214,134 +222,12 @@ function AILearningGraphFlow() {
     });
   }, [
     data.nodes,
-    statuses,
     clusterFilter,
     hideCompleted,
     showOnlyUnlockable,
     search,
+    progress.completed,
   ]);
-
-  // Build nodes/edges with auto-layout
-  const { rfNodes, rfEdges } = useMemo(() => {
-    if (view === "matrix") return { rfNodes: [], rfEdges: [] };
-
-    // Get layout based on view mode
-    const layoutResult =
-      view === "cluster" && clusterFilter !== "ALL"
-        ? getClusterLayoutedElements(filteredNodes, clusterFilter)
-        : getLayoutedElements(filteredNodes);
-
-    const nodes: Node[] = layoutResult.nodes.map((layoutNode) => {
-      const topic = layoutNode.data as TopicNode;
-      const status = statuses[topic.id];
-
-      return {
-        id: topic.id,
-        type: "card",
-        data: {
-          topic,
-          status,
-          compact,
-          reviewed: progress.reviewed?.[topic.id],
-          note: progress.notes?.[topic.id],
-          goalId,
-          onToggleDone: toggleComplete,
-          onToggleReviewed: toggleReviewed,
-          onSaveNote: saveNote,
-          onSetGoal: handleSetGoal,
-        } as CardNodeData,
-        position: layoutNode.position,
-        sourcePosition: Position.Right,
-        targetPosition: Position.Left,
-        style: { background: "transparent", border: "none" },
-      };
-    });
-
-    const edges: Edge[] = [];
-
-    // Create edges
-    filteredNodes.forEach((node) => {
-      node.deps.forEach((dep) => {
-        const depExists = filteredNodes.find((n) => n.id === dep);
-        if (depExists) {
-          const isGoalPath =
-            goalId &&
-            (node.id === goalId ||
-              isOnPathToGoal(node.id, goalId, topicsById) ||
-              dep === goalId ||
-              isOnPathToGoal(dep, goalId, topicsById));
-
-          const isCrossCluster =
-            view === "cluster" &&
-            clusterFilter !== "ALL" &&
-            (topicsById[dep]?.cluster !== clusterFilter ||
-              node.cluster !== clusterFilter);
-
-          edges.push({
-            id: `${dep}-${node.id}`,
-            source: dep,
-            target: node.id,
-            animated: isGoalPath ? true : false,
-            style: {
-              stroke: isGoalPath
-                ? "#fbbf24"
-                : isCrossCluster
-                  ? "#d1d5db"
-                  : "#6b7280",
-              strokeWidth: isGoalPath ? 3 : 2,
-              opacity: isCrossCluster ? 0.3 : 1,
-            },
-          });
-        }
-      });
-    });
-
-    return { rfNodes: nodes, rfEdges: edges };
-  }, [
-    view,
-    filteredNodes,
-    clusterFilter,
-    statuses,
-    compact,
-    progress,
-    goalId,
-    toggleComplete,
-    toggleReviewed,
-    saveNote,
-    handleSetGoal,
-    topicsById,
-  ]);
-
-  // Helper function to check if a node is on the path to goal
-  const isOnPathToGoal = useCallback(
-    (
-      nodeId: string,
-      goalNodeId: string,
-      topicsMap: Record<string, TopicNode>
-    ): boolean => {
-      if (nodeId === goalNodeId) return true;
-
-      const visited = new Set<string>();
-      const queue = [goalNodeId];
-
-      while (queue.length > 0) {
-        const current = queue.shift()!;
-        if (visited.has(current)) continue;
-        visited.add(current);
-
-        const currentNode = topicsMap[current];
-        if (!currentNode) continue;
-
-        for (const dep of currentNode.deps) {
-          if (dep === nodeId) return true;
-          if (!visited.has(dep)) queue.push(dep);
-        }
-      }
-
-      return false;
-    },
-    []
-  );
 
   const totalNodes = data.nodes.length;
   const completedCount = Object.values(progress.completed).filter(
@@ -362,78 +248,322 @@ function AILearningGraphFlow() {
   };
 
   return (
-    <div className="grid grid-cols-12 gap-4">
-      {/* Left Panel */}
-      <div className="col-span-12 lg:col-span-3 space-y-3">
-        <ProgressPanel
-          progress={progress}
-          completionPct={completionPct}
-          totalNodes={totalNodes}
-        />
+    <div className="h-full flex flex-col">
+      {/* Horizontal Navigation Bar with All Panels */}
+      <div className="bg-white border-b border-gray-200 flex-shrink-0">
+        <div className="flex items-center gap-6 p-3 min-w-max overflow-x-auto">
+          {/* Progress Panel - Compact Horizontal */}
+          <div className="flex items-center gap-3 px-3 py-2 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg border border-blue-200">
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+                <span className="text-blue-600 font-bold text-sm">
+                  {Math.floor((progress.xp || 0) / 100) + 1}
+                </span>
+              </div>
+              <div>
+                <div className="text-xs font-semibold text-blue-800">
+                  {progress.xp || 0} XP • {completionPct}%
+                </div>
+                <div className="text-xs text-blue-600">
+                  {progress.streakDays || 0} day streak
+                </div>
+              </div>
+            </div>
+          </div>
 
-        <FilterPanel
-          clusterFilter={clusterFilter}
-          setClusterFilter={setClusterFilter}
-          search={search}
-          setSearch={setSearch}
-          hideCompleted={hideCompleted}
-          setHideCompleted={setHideCompleted}
-          showOnlyUnlockable={showOnlyUnlockable}
-          setShowOnlyUnlockable={setShowOnlyUnlockable}
-          goalId={goalId}
-          setGoalId={setGoalId}
-          nodes={data.nodes}
-        />
+          {/* Search - Compact */}
+          <div className="flex items-center gap-2">
+            <input
+              className="w-48 px-3 py-2 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              placeholder="Search topics..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
+            {search && (
+              <button
+                onClick={() => setSearch("")}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                ✕
+              </button>
+            )}
+          </div>
 
-        <ClusterBadgesPanel byClusterCompletion={byClusterCompletion} />
+          {/* Filters - Compact Toggles */}
+          <div className="flex items-center gap-2">
+            <label className="flex items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                checked={hideCompleted}
+                onChange={(e) => setHideCompleted(e.target.checked)}
+                className="rounded"
+              />
+              <span className="text-gray-700">Hide completed</span>
+            </label>
+            <label className="flex items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                checked={showOnlyUnlockable}
+                onChange={(e) => setShowOnlyUnlockable(e.target.checked)}
+                className="rounded"
+              />
+              <span className="text-gray-700">Only unlockable</span>
+            </label>
+          </div>
 
-        <DataPanel progress={progress} onImportProgress={importProgress} />
+          {/* Cluster Filter - Compact Dropdown */}
+          <div className="flex items-center gap-2">
+            <label className="text-sm font-medium text-gray-700">
+              Cluster:
+            </label>
+            <select
+              value={clusterFilter}
+              onChange={(e) => setClusterFilter(e.target.value)}
+              className="px-3 py-2 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="ALL">All Clusters</option>
+              {Array.from(new Set(data.nodes.map((n) => n.cluster)))
+                .sort()
+                .map((cluster) => (
+                  <option key={cluster} value={cluster}>
+                    {getClusterDisplayName(cluster)}
+                  </option>
+                ))}
+            </select>
+          </div>
 
-        <ViewPanel
-          view={view}
-          setView={setView}
-          compact={compact}
-          setCompact={setCompact}
-        />
+          {/* Goal Selector - Compact */}
+          <div className="flex items-center gap-2">
+            <label className="text-sm font-medium text-gray-700">Goal:</label>
+            <select
+              value={goalId}
+              onChange={(e) => setGoalId(e.target.value)}
+              className="px-3 py-2 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="">No Goal</option>
+              {data.nodes
+                .filter(
+                  (n) =>
+                    computeStatus(n.id, n.deps, progress.completed) !== "locked"
+                )
+                .map((node) => (
+                  <option key={node.id} value={node.id}>
+                    {node.label}
+                  </option>
+                ))}
+            </select>
+          </div>
+
+          {/* Cluster Badges - Compact Display */}
+          <div className="flex items-center gap-1">
+            {Object.entries(byClusterCompletion)
+              .sort(([a], [b]) => a.localeCompare(b))
+              .slice(0, 5) // Show first 5 clusters
+              .map(([clusterId, completion]) => {
+                const medal =
+                  completion.pct >= 100
+                    ? "🥇"
+                    : completion.pct >= 50
+                      ? "🥈"
+                      : "🥉";
+                return (
+                  <div
+                    key={clusterId}
+                    className="flex items-center gap-1 px-2 py-1 bg-gray-100 rounded text-xs"
+                    title={`${clusterId}: ${completion.pct}%`}
+                  >
+                    <span>{medal}</span>
+                    <span className="font-medium">
+                      {getClusterDisplayName(clusterId)}
+                    </span>
+                    <span className="text-gray-600">{completion.pct}%</span>
+                  </div>
+                );
+              })}
+            {Object.keys(byClusterCompletion).length > 5 && (
+              <div className="text-xs text-gray-500 px-2">
+                +{Object.keys(byClusterCompletion).length - 5} more
+              </div>
+            )}
+          </div>
+
+          {/* View Controls - Compact */}
+          <div className="flex items-center gap-2">
+            <label className="text-sm font-medium text-gray-700">View:</label>
+            <div className="flex gap-1">
+              {[
+                { key: "tree", label: "Tree", icon: "🌲" },
+                { key: "cluster", label: "Cluster", icon: "🎯" },
+                { key: "matrix", label: "Matrix", icon: "📊" },
+              ].map((viewOption) => (
+                <button
+                  key={viewOption.key}
+                  onClick={() => setView(viewOption.key as ViewMode)}
+                  className={`px-2 py-1 text-xs font-medium rounded transition-colors ${
+                    view === viewOption.key
+                      ? "bg-blue-100 text-blue-800 border border-blue-200"
+                      : "bg-gray-50 text-gray-600 border border-gray-200 hover:bg-gray-100"
+                  }`}
+                  title={viewOption.label}
+                >
+                  {viewOption.icon}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* View Level Controls - Added */}
+          <div className="flex items-center gap-2">
+            <label className="text-sm font-medium text-gray-700">Level:</label>
+            <div className="flex gap-1">
+              {[
+                { key: "overview", label: "Overview", icon: "🌐" },
+                { key: "cluster", label: "Cluster", icon: "🎯" },
+                { key: "detail", label: "Detail", icon: "🔍" },
+              ].map((level) => (
+                <button
+                  key={level.key}
+                  onClick={() =>
+                    setViewLevel(level.key as "overview" | "cluster" | "detail")
+                  }
+                  className={`px-2 py-1 text-xs font-medium rounded transition-colors ${
+                    viewLevel === level.key
+                      ? "bg-blue-100 text-blue-800 border border-blue-200"
+                      : "bg-gray-50 text-gray-600 border border-gray-200 hover:bg-gray-100"
+                  }`}
+                  title={level.label}
+                >
+                  <span className="mr-1">{level.icon}</span>
+                  <span className="hidden lg:inline">{level.label}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Cluster Style Controls - Added */}
+          <div className="flex items-center gap-2">
+            <label className="text-sm font-medium text-gray-700">Style:</label>
+            <div className="flex gap-1">
+              {[
+                { key: "none", label: "None", icon: "⭕" },
+                {
+                  key: "background",
+                  label: "Background",
+                  icon: "⬜",
+                  primary: true,
+                },
+                { key: "hull", label: "Hull", icon: "🔷" },
+                { key: "bubble", label: "Bubble", icon: "🫧" },
+                { key: "labels", label: "Labels", icon: "🏷️" },
+              ].map((style) => (
+                <button
+                  key={style.key}
+                  onClick={() => setClusterStyle(style.key)}
+                  className={`px-2 py-1 text-xs font-medium rounded transition-colors ${
+                    clusterStyle === style.key
+                      ? style.primary
+                        ? "bg-indigo-100 text-indigo-800 border border-indigo-200"
+                        : "bg-blue-100 text-blue-800 border border-blue-200"
+                      : "bg-gray-50 text-gray-600 border border-gray-200 hover:bg-gray-100"
+                  }`}
+                  title={style.label}
+                >
+                  <span>{style.icon}</span>
+                  <span className="hidden xl:inline">{style.label}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Layout Direction Controls - Added back */}
+          <div className="flex items-center gap-2">
+            <label className="text-sm font-medium text-gray-700">Layout:</label>
+            <div className="flex gap-1">
+              {[
+                { key: "TB", label: "↓", title: "Top to Bottom" },
+                { key: "LR", label: "→", title: "Left to Right" },
+              ].map((dir) => (
+                <button
+                  key={dir.key}
+                  onClick={() => setLayoutDirection(dir.key as "TB" | "LR")}
+                  title={dir.title}
+                  className={`w-8 h-8 text-sm font-medium rounded-md transition-colors ${
+                    layoutDirection === dir.key
+                      ? "bg-blue-100 text-blue-800 border border-blue-200"
+                      : "bg-gray-50 text-gray-600 border border-gray-200 hover:bg-gray-100"
+                  }`}
+                >
+                  {dir.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Data Management - Compact */}
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => {
+                const blob = new Blob([JSON.stringify(progress, null, 2)], {
+                  type: "application/json",
+                });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement("a");
+                a.href = url;
+                a.download = `ai-learning-progress-${
+                  new Date().toISOString().split("T")[0]
+                }.json`;
+                a.click();
+                URL.revokeObjectURL(url);
+              }}
+              className="px-3 py-2 text-xs font-medium text-blue-600 bg-blue-50 border border-blue-200 rounded hover:bg-blue-100 transition-colors"
+            >
+              Export
+            </button>
+            <label className="px-3 py-2 text-xs font-medium text-green-600 bg-green-50 border border-green-200 rounded hover:bg-green-100 transition-colors cursor-pointer">
+              Import
+              <input
+                type="file"
+                accept=".json"
+                className="hidden"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) importProgress(file);
+                }}
+              />
+            </label>
+          </div>
+        </div>
       </div>
 
-      {/* Right Panel: Graph or Matrix */}
-      <div className="col-span-12 lg:col-span-9 relative rounded-2xl border overflow-hidden h-[60vh] sm:h-[70vh] lg:h-[80vh]">
+      {/* Main Content Area - Full Height and Width */}
+      <div
+        className="flex-1 relative bg-gray-50"
+        style={{
+          border:
+            process.env.NODE_ENV === "development" ? "2px solid red" : "none",
+          minHeight: "400px", // Ensure minimum height
+        }}
+      >
         {view === "matrix" ? (
-          <DependencyMatrix nodes={data.nodes} topicsById={topicsById} />
+          <DependencyMatrix nodes={filteredNodes} topicsById={topicsById} />
         ) : (
-          <div style={{ width: "100%", height: "100%" }}>
-            <ReactFlow
-              nodes={rfNodes}
-              edges={rfEdges}
-              nodeTypes={nodeTypes}
-              fitView
-              fitViewOptions={{ padding: 0.1 }}
-              minZoom={0.05}
-              maxZoom={1.5}
-              defaultViewport={{ x: 0, y: 0, zoom: 0.8 }}
-              attributionPosition="bottom-left"
-            >
-              <MiniMap
-                zoomable
-                pannable
-                nodeColor={(node) => {
-                  const status = statuses[node.id];
-                  if (status === "completed") return "#10b981";
-                  if (status === "available") return "#3b82f6";
-                  return "#6b7280";
-                }}
-                className="!w-32 !h-24 sm:!w-48 sm:!h-36"
-              />
-              <Controls
-                showZoom={true}
-                showFitView={true}
-                showInteractive={false}
-                className="!bottom-4 !left-4"
-              />
-              <Background gap={24} />
-            </ReactFlow>
-          </div>
+          <DependencyGraph
+            nodes={filteredNodes}
+            view={view}
+            clusterFilter={clusterFilter}
+            compact={compact}
+            goalId={goalId}
+            search={search}
+            progress={progress}
+            onToggleDone={toggleComplete}
+            onToggleReviewed={toggleReviewed}
+            onSaveNote={saveNote}
+            onSetGoal={handleSetGoal}
+            topicsById={topicsById}
+            viewLevel={viewLevel}
+            clusterStyle={clusterStyle}
+            layoutDirection={layoutDirection}
+          />
         )}
       </div>
 

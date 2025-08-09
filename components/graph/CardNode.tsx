@@ -9,7 +9,8 @@ import {
   Columns2,
 } from "lucide-react";
 import { TopicNode, TopicStatus } from "@/lib/types";
-import { clusterLabels, clusterColors } from "@/lib/constants";
+import { clusterLabels } from "@/lib/constants";
+import { getClusterStyle } from "@/lib/map-constants";
 
 export type CardNodeData = {
   topic: TopicNode;
@@ -43,29 +44,32 @@ export const CardNode: React.FC<{ data: CardNodeData }> = ({ data }) => {
   const [open, setOpen] = React.useState(false);
 
   const base = compact
-    ? "rounded-lg border-2 p-2 shadow-sm min-w-[180px] max-w-[280px] bg-white"
-    : "rounded-2xl border-2 p-3 shadow-sm min-w-[220px] max-w-[320px] sm:min-w-[260px] sm:max-w-[360px] bg-white";
+    ? "rounded-lg border-2 p-2 shadow-sm min-w-[180px] max-w-[280px]"
+    : "rounded-2xl border-2 p-3 shadow-sm min-w-[220px] max-w-[320px] sm:min-w-[260px] sm:max-w-[360px]";
 
-  const cluster = clusterColors[topic.cluster] || "bg-white";
+  const clusterStyle = getClusterStyle(topic.cluster);
 
   // Status-based border colors as per requirements
-  const statusBorders: Record<TopicStatus, string> = {
-    locked: "border-gray-300",
-    available: "border-blue-400",
-    completed: "border-green-500",
+  const statusColors: Record<TopicStatus, string> = {
+    locked: "#d1d5db", // gray-300
+    available: "#60a5fa", // blue-400
+    completed: "#10b981", // green-500
   };
 
-  const statusClasses = `${statusBorders[status]} ${
-    locked ? "opacity-50 grayscale" : ""
-  }`;
+  const statusClasses = `${locked ? "opacity-50 grayscale" : ""}`;
 
   return (
     <motion.div
       whileHover={{ scale: 1.05 }}
       whileTap={{ scale: 0.98 }}
-      className={`${base} ${cluster} ${statusClasses} ${
+      className={`${base} ${statusClasses} ${
         isGoal ? "ring-2 ring-yellow-400 shadow-lg" : ""
       }`}
+      style={{
+        background: clusterStyle.background,
+        borderColor: statusColors[status],
+        color: clusterStyle.text,
+      }}
       transition={{ type: "spring", stiffness: 300, damping: 20 }}
     >
       <div className="flex items-start gap-2 sm:gap-3">

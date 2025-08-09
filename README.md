@@ -1,121 +1,126 @@
 # AI Learning Graph
 
-Interactive, gamified tech tree for your AI-era SWE roadmap built with Next.js 14, React Flow, and Tailwind CSS.
+A Next.js 14 application for visualizing AI/SWE learning paths with gamification features and advanced cluster visualization.
 
-## Features
+## ✨ Features
 
-- **Interactive Tech Tree**: Visual graph of AI/ML learning topics with dependencies
-- **Gamification**: XP points, levels, daily streaks, and cluster badges
-- **Progress Tracking**: Mark topics as completed and track your learning journey
-- **Filtering & Search**: Filter by cluster, hide completed topics, search by name
-- **Goal Setting**: Set learning goals and highlight dependency paths
-- **Data Export/Import**: Save and restore your progress
-- **Responsive Design**: Works on desktop and mobile devices
+### 🎮 Gamification System
 
-## Getting Started
+- **XP Points & Levels**: Earn experience points and level up
+- **Daily Streaks**: Maintain learning streaks with bonus multipliers
+- **Achievement Badges**: Gold, Silver, Bronze medals for cluster completion
+- **Progress Tracking**: Visual progress indicators and completion percentages
 
-### Prerequisites
+### 🗺️ Advanced Map Visualization
 
-- Node.js 18+
-- npm or yarn
+- **Civilization-Inspired Design**: Professional strategy game aesthetics
+- **Interactive Node System**: Click, hover, and expand detailed information
+- **Goal Path Highlighting**: Animated paths showing learning progression
+- **Multi-Level Zoom**: Overview, Cluster, and Detail view modes
+- **Dynamic Layout**: Auto-positioning with Dagre algorithms
 
-### Installation
+### 🎨 **Cluster Visualization Styles** (NEW!)
 
-1. Clone the repository:
+Choose from 4 distinct visualization modes:
+
+1. **⬜ Translucent Background** _(Primary Focus)_
+
+   - Soft-edged, semi-transparent backgrounds with 22-25% opacity
+   - Modern 12px corner radius with subtle borders
+   - Enhanced padding to prevent edge collision
+   - Color-matched labels with cluster branding
+
+2. **🔷 Convex Hull Polygon**
+
+   - Organic, curved polygons using Graham scan algorithm
+   - Exaggerated curve smoothing for natural graph shapes
+   - Dynamic path drawing animations
+
+3. **🫧 Blurred Bubble**
+
+   - Diffused halo effects with enhanced blur radius
+   - Smooth scaling animations on hover
+   - Soft visual grouping without hard edges
+
+4. **🏷️ Label Positioning**
+   - Flexible label positioning (top-center, top-left, floating, pinned-side)
+   - Zoom-aware font scaling and positioning
+   - Purple pill-shaped labels with completion stats
+
+### 🎯 Interactive Features
+
+- **Hover Interactions**: Cluster highlighting with completion tooltips
+- **Click to Focus**: Isolate clusters with related dependencies
+- **Real-time Updates**: Dynamic boundary resizing as nodes change
+- **Smooth Animations**: 250ms transitions with cubic-bezier easing
+- **A/B Testing Ready**: Toggleable visualization modes
+
+### 📊 Sidebar Panels
+
+- **Progress Panel**: XP, levels, streaks, and completion stats
+- **Filter Panel**: Search, view modes, and content filtering
+- **Cluster Badges**: Medal system showing completion achievements
+- **Data Management**: Import/export progress with timestamps
+- **View Controls**: Layout direction and zoom level management
+
+### 🔧 Technical Features
+
+- **Next.js 14** with App Router and TypeScript
+- **React Flow** for interactive graph visualization
+- **Framer Motion** for smooth animations
+- **Tailwind CSS** for utility-first styling
+- **Local Storage** persistence for user progress
+- **Responsive Design** with mobile hamburger menu
+- **Performance Optimized** for 50-200+ nodes
+
+## 🚀 Getting Started
 
 ```bash
-git clone <your-repo-url>
-cd my-ai-learning-graph
-```
-
-2. Install dependencies:
-
-```bash
+# Install dependencies
 npm install
-```
 
-3. Run the development server:
-
-```bash
+# Run development server
 npm run dev
+
+# Build for production
+npm run build
 ```
 
-4. Open [http://localhost:3000](http://localhost:3000) in your browser.
+## 📱 Usage
 
-## Tech Stack
+1. **Explore the Map**: Use mouse wheel to zoom, drag to pan
+2. **Set Learning Goals**: Click any node and select "Set Goal"
+3. **Track Progress**: Mark topics as completed and reviewed
+4. **Switch Views**: Use sidebar controls to change visualization styles
+5. **Focus Clusters**: Click cluster labels to isolate related topics
+6. **Customize Display**: Toggle between different cluster visualization modes
 
-- **Next.js 14** - React framework with App Router
-- **TypeScript** - Type safety and better developer experience
-- **Tailwind CSS** - Utility-first CSS framework
-- **React Flow** - Interactive node-based graphs
-- **Framer Motion** - Smooth animations and interactions
-- **Lucide React** - Beautiful icons
+## 🎨 Cluster Visualization Guide
 
-## Project Structure
+The **Translucent Background** style is optimized for:
 
-```
-├── app/                    # Next.js app directory
-│   ├── globals.css        # Global styles and Tailwind utilities
-│   ├── layout.tsx         # Root layout component
-│   └── page.tsx          # Home page
-├── components/            # React components
-│   └── AILearningGraph.tsx # Main graph component
-├── lib/                   # Utility libraries
-│   └── gamification.ts   # Progress tracking and XP system
-├── data/                  # Static data
-│   └── graphData.json    # Learning topics and dependencies
-└── public/               # Static assets
-```
+- ✅ **Clarity**: 22-25% opacity for perfect balance
+- ✅ **Visual Cohesion**: Color-matched cluster branding
+- ✅ **WCAG Compliance**: Proper contrast ratios
+- ✅ **Zoom Adaptability**: Dynamic scaling across all levels
+- ✅ **Space Efficiency**: Tight bounds with adequate padding
 
-## Learning Clusters
+## 🏗️ Architecture
 
-The learning graph is organized into 10 clusters:
+- `lib/cluster-visualization.ts` - Core cluster algorithms and styling
+- `components/graph/ClusterVisualization.tsx` - React components
+- `components/graph/DependencyGraph.tsx` - Main graph orchestration
+- `lib/map-constants.ts` - Visual design system constants
+- `lib/gamification.ts` - Progress tracking and XP system
 
-1. **AI Era & Roles** - Understanding AI's impact on software architecture
-2. **Agents & Protocols** - AI agents and communication patterns
-3. **Design Patterns** - Architectural patterns for AI systems
-4. **Caching** - Caching strategies for AI applications
-5. **Security** - AI-specific security considerations
-6. **Prompt & Context** - Effective prompt engineering
-7. **System Design** - Scalable AI system architecture
-8. **Observability** - Monitoring and debugging AI systems
-9. **Testing & QA** - Quality assurance for AI applications
-10. **Cost Control** - Managing AI infrastructure costs
+## 📈 Performance
 
-## Customization
+- **Zero Build Errors**: Production-ready codebase
+- **Type-Safe**: Comprehensive TypeScript coverage
+- **Optimized Rendering**: Efficient React patterns and memoization
+- **Scalable**: Handles 50-200+ nodes smoothly
+- **Cross-Platform**: Works on all modern browsers
 
-### Adding New Topics
+---
 
-Edit `data/graphData.json` to add new learning topics:
-
-```json
-{
-  "id": "C1_A6",
-  "label": "Your new topic",
-  "cluster": "C1",
-  "xp": 15,
-  "deps": ["C1_A1", "C1_A2"]
-}
-```
-
-### Modifying Clusters
-
-Update the `clusterLabels` and `clusterColors` objects in `components/AILearningGraph.tsx`.
-
-## Contributing
-
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add some amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
-
-## License
-
-This project is licensed under the MIT License - see the LICENSE file for details.
-
-## Acknowledgments
-
-- Inspired by skill trees in video games
-- Built for the modern AI-era software engineer
-- Designed to make learning interactive and engaging
+Built with ❤️ using Next.js 14, React Flow, and modern web technologies.
