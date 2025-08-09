@@ -1,3 +1,5 @@
+import "./globals.css";
+
 export const metadata = {
   title: "AI Learning Graph",
   description: "Interactive, gamified tech tree for your AI-era SWE roadmap",

@@ -5,14 +5,26 @@
       "label": "AI impact on architecture",
       "cluster": "C1",
       "xp": 20,
-      "deps": []
+      "deps": [],
+      "links": [
+        {
+          "label": "Article: Software Architecture in the Age of AI",
+          "url": "https://martinfowler.com/articles/2024-ai-architecture.html"
+        }
+      ]
     },
     {
       "id": "C1_A2",
       "label": "New developer profile",
       "cluster": "C1",
       "xp": 10,
-      "deps": ["C1_A1"]
+      "deps": ["C1_A1"],
+      "links": [
+        {
+          "label": "Talk: The New AI Engineer",
+          "url": "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
+        }
+      ]
     },
     {
       "id": "C1_A3",
@@ -26,14 +38,26 @@
       "label": "AI as a software component",
       "cluster": "C1",
       "xp": 15,
-      "deps": ["C1_A1", "C1_A2", "C1_A3"]
+      "deps": ["C1_A1", "C1_A2", "C1_A3"],
+      "links": [
+        {
+          "label": "Blog: AI as a Dependency",
+          "url": "https://example.com/ai-as-dependency"
+        }
+      ]
     },
     {
       "id": "C1_A5",
       "label": "Business & ROI for AI",
       "cluster": "C1",
       "xp": 10,
-      "deps": ["C1_A4"]
+      "deps": ["C1_A4"],
+      "links": [
+        {
+          "label": "Calculator: Estimating AI ROI",
+          "url": "https://example.com/ai-roi"
+        }
+      ]
     },
 
     {
@@ -41,7 +65,10 @@
       "label": "What is an AI Agent",
       "cluster": "C2",
       "xp": 20,
-      "deps": ["C1_A1"]
+      "deps": ["C1_A1"],
+      "links": [
+        { "label": "Agents Primer", "url": "https://example.com/agents-primer" }
+      ]
     },
     {
       "id": "C2_A2",
@@ -62,14 +89,26 @@
       "label": "Agent orchestration",
       "cluster": "C2",
       "xp": 25,
-      "deps": ["C2_A3"]
+      "deps": ["C2_A3"],
+      "links": [
+        {
+          "label": "Paper: Multi-Agent Systems",
+          "url": "https://example.com/mas-paper"
+        }
+      ]
     },
     {
       "id": "C2_A5",
       "label": "MCP fundamentals",
       "cluster": "C2",
       "xp": 15,
-      "deps": ["C2_A3"]
+      "deps": ["C2_A3"],
+      "links": [
+        {
+          "label": "Spec: Model Context Protocol",
+          "url": "https://modelcontextprotocol.io"
+        }
+      ]
     },
     {
       "id": "C2_A6",
@@ -105,7 +144,13 @@
       "label": "Hand-crafted prompts",
       "cluster": "C3",
       "xp": 15,
-      "deps": ["C6_A1"]
+      "deps": ["C6_A1"],
+      "links": [
+        {
+          "label": "Guide: Prompt Writing",
+          "url": "https://example.com/prompt-guide"
+        }
+      ]
     },
     {
       "id": "C3_A3",
@@ -133,14 +178,20 @@
       "label": "ReAct prompting",
       "cluster": "C3",
       "xp": 20,
-      "deps": ["C6_A1"]
+      "deps": ["C6_A1"],
+      "links": [
+        { "label": "Paper: ReAct", "url": "https://arxiv.org/abs/2210.03629" }
+      ]
     },
     {
       "id": "C3_A7",
       "label": "Chain-of-Thought",
       "cluster": "C3",
       "xp": 20,
-      "deps": ["C6_A1"]
+      "deps": ["C6_A1"],
+      "links": [
+        { "label": "Paper: CoT", "url": "https://arxiv.org/abs/2201.11903" }
+      ]
     },
     {
       "id": "C3_A8",
@@ -169,7 +220,13 @@
       "label": "Caching basics",
       "cluster": "C4",
       "xp": 15,
-      "deps": []
+      "deps": [],
+      "links": [
+        {
+          "label": "Caching Strategies",
+          "url": "https://web.dev/articles/caching-best-practices"
+        }
+      ]
     },
     {
       "id": "C4_A2",
@@ -247,7 +304,13 @@
       "label": "OWASP LLM Top 10",
       "cluster": "C5",
       "xp": 15,
-      "deps": ["C5_A3"]
+      "deps": ["C5_A3"],
+      "links": [
+        {
+          "label": "OWASP Top 10 for LLM",
+          "url": "https://owasp.org/www-project-top-10-for-large-language-model-applications/"
+        }
+      ]
     },
     {
       "id": "C5_A5",
@@ -304,7 +367,13 @@
       "label": "Effective prompt writing",
       "cluster": "C6",
       "xp": 25,
-      "deps": ["C1_A4"]
+      "deps": ["C1_A4"],
+      "links": [
+        {
+          "label": "Prompting Guide",
+          "url": "https://platform.openai.com/docs/guides/prompt-engineering"
+        }
+      ]
     },
     {
       "id": "C6_A2",
@@ -403,14 +472,26 @@
       "label": "RAG architecture",
       "cluster": "C7",
       "xp": 30,
-      "deps": ["C7_A3", "C6_A9"]
+      "deps": ["C7_A3", "C6_A9"],
+      "links": [
+        {
+          "label": "RAG Guide",
+          "url": "https://www.pinecone.io/learn/series/rag/"
+        }
+      ]
     },
     {
       "id": "C7_A5",
       "label": "Vector DB fundamentals",
       "cluster": "C7",
       "xp": 20,
-      "deps": ["C7_A4"]
+      "deps": ["C7_A4"],
+      "links": [
+        {
+          "label": "Vector DBs",
+          "url": "https://www.pinecone.io/learn/vector-database/"
+        }
+      ]
     },
     {
       "id": "C7_A6",
@@ -595,7 +676,10 @@
       "label": "Token pricing models",
       "cluster": "C10",
       "xp": 15,
-      "deps": []
+      "deps": [],
+      "links": [
+        { "label": "OpenAI Pricing", "url": "https://openai.com/pricing" }
+      ]
     },
     {
       "id": "C10_A2",

@@ -2,16 +2,20 @@ export type TopicStatus = "locked" | "available" | "completed";
 
 export interface ProgressState {
   completed: Record<string, boolean>; // topicId -> completed
+  reviewed?: Record<string, boolean>; // topicId -> reviewed
+  notes?: Record<string, string>; // topicId -> personal note
   xp: number;
   level: number;
   lastActiveISO?: string; // for streaks
   streakDays?: number;
 }
 
-export const STORAGE_KEY = "ai-learning-graph-progress-v2";
+export const STORAGE_KEY = "ai-learning-graph-progress-v3";
 
 export const initialProgress: ProgressState = {
   completed: {},
+  reviewed: {},
+  notes: {},
   xp: 0,
   level: 1,
   lastActiveISO: undefined,
@@ -46,8 +50,18 @@ export function levelForXP(xp: number): number {
   return 1 + Math.floor(xp / 100); // 100 XP per level
 }
 
+export function getStreakBonus(streakDays: number): number {
+  if (streakDays >= 30) return 2.0; // Double XP for 30+ day streak
+  if (streakDays >= 14) return 1.5; // 50% bonus for 2+ week streak
+  if (streakDays >= 7) return 1.25; // 25% bonus for 1+ week streak
+  if (streakDays >= 3) return 1.1; // 10% bonus for 3+ day streak
+  return 1.0; // No bonus
+}
+
 export function awardXP(current: ProgressState, amount: number): ProgressState {
-  const newXP = Math.max(0, current.xp + amount);
+  const streakMultiplier = getStreakBonus(current.streakDays || 0);
+  const bonusXP = Math.floor(amount * streakMultiplier);
+  const newXP = Math.max(0, current.xp + bonusXP);
   const newLevel = levelForXP(newXP);
   return { ...current, xp: newXP, level: newLevel };
 }
@@ -88,4 +102,10 @@ export function clusterCompletion(
     out[cluster] = { total, done, pct };
   }
   return out;
+}
+
+export function getStreakBonusText(streakDays: number): string {
+  const bonus = getStreakBonus(streakDays);
+  if (bonus === 1.0) return "";
+  return `${Math.round((bonus - 1) * 100)}% streak bonus!`;
 }
