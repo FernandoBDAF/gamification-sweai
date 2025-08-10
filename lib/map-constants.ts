@@ -252,6 +252,14 @@ export const MAP_CONSTANTS = {
   },
 } as const;
 
+// New cluster hull style configuration
+export const CLUSTER_STYLE = {
+  HULL_PADDING: 40,
+  HULL_CORNER_RADIUS: 16,
+  FILL_OPACITY: 0.25,
+  STROKE_WIDTH: 1.5,
+} as const;
+
 // Utility functions for map styling
 export const getClusterStyle = (clusterId: string) => {
   return (

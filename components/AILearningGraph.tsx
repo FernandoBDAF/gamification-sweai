@@ -35,6 +35,7 @@ function AILearningGraphFlow() {
   const data = graphData as GraphData;
   const [progress, setProgress] = useState<ProgressState>(initialProgress);
   const [clusterFilter, setClusterFilter] = useState<string>("ALL");
+  const [clusterFilters, setClusterFilters] = useState<string[]>([]);
   const [hideCompleted, setHideCompleted] = useState<boolean>(false);
   const [showOnlyUnlockable, setShowOnlyUnlockable] = useState<boolean>(false);
   const [goalId, setGoalId] = useState<string>("");
@@ -49,6 +50,10 @@ function AILearningGraphFlow() {
   );
   const [clusterStyle, setClusterStyle] = useState<string>("background");
   const [layoutDirection, setLayoutDirection] = useState<"TB" | "LR">("TB");
+
+  // Popovers
+  const [clusterMenuOpen, setClusterMenuOpen] = useState(false);
+  const [moreOpen, setMoreOpen] = useState(false);
 
   // Get compact mode from panel controls
   const { compactMode } = usePanelControls();
@@ -69,6 +74,11 @@ function AILearningGraphFlow() {
     };
     return clusterNames[clusterId] || clusterId;
   };
+
+  const allClusters = useMemo(
+    () => Array.from(new Set(data.nodes.map((n) => n.cluster))).sort(),
+    [data.nodes]
+  );
 
   // Load & persist progress, update daily streak
   useEffect(() => setProgress((_) => updateDailyStreak(loadProgress())), []);
@@ -170,7 +180,7 @@ function AILearningGraphFlow() {
         return {
           ...withStreak,
           completed: { ...withStreak.completed, [id]: nowCompleted },
-        };
+        } as ProgressState;
       });
     },
     [topicsById, progress.completed]
@@ -204,8 +214,10 @@ function AILearningGraphFlow() {
   const filteredNodes = useMemo(() => {
     return data.nodes.filter((n) => {
       const status = computeStatus(n.id, n.deps, progress.completed);
-      const includeByCluster =
-        clusterFilter === "ALL" || n.cluster === clusterFilter;
+      const multiActive = clusterFilters && clusterFilters.length > 0;
+      const includeByCluster = multiActive
+        ? clusterFilters.includes(n.cluster)
+        : clusterFilter === "ALL" || n.cluster === clusterFilter;
       const includeByStatus = !hideCompleted || status !== "completed";
       const includeUnlockable = !showOnlyUnlockable || status !== "locked";
       const includeSearch =
@@ -223,6 +235,7 @@ function AILearningGraphFlow() {
   }, [
     data.nodes,
     clusterFilter,
+    clusterFilters,
     hideCompleted,
     showOnlyUnlockable,
     search,
@@ -237,6 +250,20 @@ function AILearningGraphFlow() {
     (completedCount / Math.max(1, totalNodes)) * 100
   );
 
+  const exportProgress = () => {
+    const blob = new Blob([JSON.stringify(progress, null, 2)], {
+      type: "application/json",
+    });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `ai-learning-progress-${
+      new Date().toISOString().split("T")[0]
+    }.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   const importProgress = (file: File) => {
     const reader = new FileReader();
     reader.onload = () => {
@@ -247,12 +274,19 @@ function AILearningGraphFlow() {
     reader.readAsText(file);
   };
 
+  function Tip({ label }: { label: string }) {
+    return (
+      <span className="pointer-events-none absolute -bottom-7 left-1/2 -translate-x-1/2 whitespace-nowrap rounded bg-gray-900 text-white text-xs px-2 py-1 shadow opacity-0 group-hover:opacity-100 transition-opacity duration-100">
+        {label}
+      </span>
+    );
+  }
+
   return (
     <div className="h-full min-w-0 flex flex-col overflow-hidden">
-      {/* Horizontal Navigation Bar with All Panels */}
-      <div className="bg-white border-b border-gray-200 flex-shrink-0 overflow-x-auto">
-        {/* Keep the bar scrollable if needed, but the map below must not expand the page */}
-        <div className="flex items-center gap-6 p-3 min-w-max overflow-x-auto">
+      {/* Sticky, compact top bar with wrapping */}
+      <div className="bg-white border-b border-gray-200 flex-shrink-0 sticky top-0 z-30">
+        <div className="flex flex-wrap items-center gap-3 px-3 py-2 min-w-0">
           {/* Progress Panel - Compact Horizontal */}
           <div className="flex items-center gap-3 px-3 py-2 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg border border-blue-200">
             <div className="flex items-center gap-2">
@@ -275,7 +309,7 @@ function AILearningGraphFlow() {
           {/* Search - Compact */}
           <div className="flex items-center gap-2">
             <input
-              className="w-48 px-3 py-2 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              className="w-48 px-2 py-1.5 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               placeholder="Search topics..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
@@ -312,228 +346,244 @@ function AILearningGraphFlow() {
             </label>
           </div>
 
-          {/* Cluster Filter - Compact Dropdown */}
-          <div className="flex items-center gap-2">
-            <label className="text-sm font-medium text-gray-700">
-              Cluster:
-            </label>
-            <select
-              value={clusterFilter}
-              onChange={(e) => setClusterFilter(e.target.value)}
-              className="px-3 py-2 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
+          {/* Cluster Filter - Popover Checklist */}
+          <div className="relative">
+            <button
+              className="px-2 py-1.5 text-sm border rounded-md bg-white hover:bg-gray-50"
+              onClick={() => setClusterMenuOpen((v) => !v)}
+              aria-expanded={clusterMenuOpen}
             >
-              <option value="ALL">All Clusters</option>
-              {Array.from(new Set(data.nodes.map((n) => n.cluster)))
-                .sort()
-                .map((cluster) => (
-                  <option key={cluster} value={cluster}>
-                    {getClusterDisplayName(cluster)}
-                  </option>
-                ))}
-            </select>
-          </div>
+              Clusters{" "}
+              {clusterFilters.length ? `(${clusterFilters.length})` : "(All)"}
+            </button>
 
-          {/* Goal Selector - Compact */}
-          <div className="flex items-center gap-2">
-            <label className="text-sm font-medium text-gray-700">Goal:</label>
-            <select
-              value={goalId}
-              onChange={(e) => setGoalId(e.target.value)}
-              className="px-3 py-2 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
-            >
-              <option value="">No Goal</option>
-              {data.nodes
-                .filter(
-                  (n) =>
-                    computeStatus(n.id, n.deps, progress.completed) !== "locked"
-                )
-                .map((node) => (
-                  <option key={node.id} value={node.id}>
-                    {node.label}
-                  </option>
-                ))}
-            </select>
-          </div>
+            {clusterMenuOpen && (
+              <div
+                className="absolute z-20 mt-2 w-64 rounded-md border bg-white shadow-lg p-2 max-h-72 overflow-auto"
+                onMouseLeave={() => setClusterMenuOpen(false)}
+              >
+                {/* All toggle */}
+                <label className="flex items-center gap-2 px-2 py-1 rounded hover:bg-gray-50 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={clusterFilters.length === 0}
+                    onChange={(e) => {
+                      if (e.target.checked) {
+                        setClusterFilters([]);
+                        setClusterFilter("ALL");
+                      }
+                    }}
+                  />
+                  <span className="text-sm font-medium">All Clusters</span>
+                </label>
 
-          {/* Cluster Badges - Compact Display */}
-          <div className="flex items-center gap-1">
-            {Object.entries(byClusterCompletion)
-              .sort(([a], [b]) => a.localeCompare(b))
-              .slice(0, 5) // Show first 5 clusters
-              .map(([clusterId, completion]) => {
-                const medal =
-                  completion.pct >= 100
-                    ? "🥇"
-                    : completion.pct >= 50
-                      ? "🥈"
-                      : "🥉";
-                return (
-                  <div
-                    key={clusterId}
-                    className="flex items-center gap-1 px-2 py-1 bg-gray-100 rounded text-xs"
-                    title={`${clusterId}: ${completion.pct}%`}
-                  >
-                    <span>{medal}</span>
-                    <span className="font-medium">
-                      {getClusterDisplayName(clusterId)}
-                    </span>
-                    <span className="text-gray-600">{completion.pct}%</span>
-                  </div>
-                );
-              })}
-            {Object.keys(byClusterCompletion).length > 5 && (
-              <div className="text-xs text-gray-500 px-2">
-                +{Object.keys(byClusterCompletion).length - 5} more
+                <div className="my-1 h-px bg-gray-200" />
+
+                {/* Individual clusters */}
+                {allClusters.map((c) => {
+                  const checked =
+                    clusterFilters.length === 0
+                      ? true
+                      : clusterFilters.includes(c);
+                  return (
+                    <label
+                      key={c}
+                      className="flex items-center gap-2 px-2 py-1 rounded hover:bg-gray-50 cursor-pointer"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={checked}
+                        onChange={(e) => {
+                          setClusterFilter("ALL");
+                          setClusterFilters((prev) => {
+                            const set = new Set(prev);
+                            if (e.target.checked) set.add(c);
+                            else set.delete(c);
+                            return Array.from(set);
+                          });
+                        }}
+                      />
+                      <span className="text-sm">{c}</span>
+                    </label>
+                  );
+                })}
               </div>
             )}
           </div>
 
-          {/* View Controls - Compact */}
-          <div className="flex items-center gap-2">
-            <label className="text-sm font-medium text-gray-700">View:</label>
-            <div className="flex gap-1">
-              {[
-                { key: "tree", label: "Tree", icon: "🌲" },
-                { key: "cluster", label: "Cluster", icon: "🎯" },
-                { key: "matrix", label: "Matrix", icon: "📊" },
-              ].map((viewOption) => (
-                <button
-                  key={viewOption.key}
-                  onClick={() => setView(viewOption.key as ViewMode)}
-                  className={`px-2 py-1 text-xs font-medium rounded transition-colors ${
-                    view === viewOption.key
-                      ? "bg-blue-100 text-blue-800 border border-blue-200"
-                      : "bg-gray-50 text-gray-600 border border-gray-200 hover:bg-gray-100"
-                  }`}
-                  title={viewOption.label}
-                >
+          {/* Grouped View/Level/Style Controls - compact with instant tips */}
+          <div className="flex items-center gap-1 px-2 py-1 bg-gray-50 border rounded-md flex-wrap">
+            {/* View */}
+            {[
+              { key: "tree", label: "Tree", icon: "🌲" },
+              { key: "cluster", label: "Cluster", icon: "🎯" },
+              { key: "matrix", label: "Matrix", icon: "📊" },
+            ].map((viewOption) => (
+              <button
+                key={viewOption.key}
+                onClick={() => setView(viewOption.key as ViewMode)}
+                className={`relative group px-2 py-1 text-xs rounded hover:bg-gray-100 ${
+                  view === viewOption.key
+                    ? "bg-blue-100 text-blue-800 border border-blue-200"
+                    : "text-gray-700"
+                }`}
+              >
+                <span className="md:hidden">{viewOption.icon}</span>
+                <span className="hidden md:inline-flex items-center gap-1">
                   {viewOption.icon}
-                </button>
-              ))}
-            </div>
+                  <span>{viewOption.label}</span>
+                </span>
+                <Tip label={viewOption.label} />
+              </button>
+            ))}
+
+            <span className="w-px h-5 bg-gray-300 mx-1" />
+
+            {/* Level */}
+            {[
+              { key: "overview", label: "Overview", icon: "🌐" },
+              { key: "cluster", label: "Cluster", icon: "🎯" },
+              { key: "detail", label: "Detail", icon: "🔍" },
+            ].map((level) => (
+              <button
+                key={level.key}
+                onClick={() =>
+                  setViewLevel(level.key as "overview" | "cluster" | "detail")
+                }
+                className={`relative group px-2 py-1 text-xs rounded hover:bg-gray-100 ${
+                  viewLevel === level.key
+                    ? "bg-blue-100 text-blue-800 border border-blue-200"
+                    : "text-gray-700"
+                }`}
+              >
+                <span className="md:hidden">{level.icon}</span>
+                <span className="hidden md:inline-flex items-center gap-1">
+                  {level.icon}
+                  <span>{level.label}</span>
+                </span>
+                <Tip label={level.label} />
+              </button>
+            ))}
+
+            <span className="w-px h-5 bg-gray-300 mx-1" />
+
+            {/* Style */}
+            {[
+              { key: "none", label: "None", icon: "⭕" },
+              {
+                key: "background",
+                label: "Background",
+                icon: "⬜",
+                primary: true,
+              },
+              { key: "hull", label: "Hull", icon: "🔷" },
+              { key: "bubble", label: "Bubble", icon: "🫧" },
+              { key: "labels", label: "Labels", icon: "🏷️" },
+            ].map((style) => (
+              <button
+                key={style.key}
+                onClick={() => setClusterStyle(style.key)}
+                className={`relative group px-2 py-1 text-xs rounded hover:bg-gray-100 ${
+                  clusterStyle === style.key
+                    ? style.primary
+                      ? "bg-indigo-100 text-indigo-800 border border-indigo-200"
+                      : "bg-blue-100 text-blue-800 border border-blue-200"
+                    : "text-gray-700"
+                }`}
+              >
+                <span className="md:hidden">{style.icon}</span>
+                <span className="hidden md:inline-flex items-center gap-1">
+                  {style.icon}
+                  <span>{style.label}</span>
+                </span>
+                <Tip label={style.label} />
+              </button>
+            ))}
           </div>
 
-          {/* View Level Controls - Added */}
-          <div className="flex items-center gap-2">
-            <label className="text-sm font-medium text-gray-700">Level:</label>
-            <div className="flex gap-1">
-              {[
-                { key: "overview", label: "Overview", icon: "🌐" },
-                { key: "cluster", label: "Cluster", icon: "🎯" },
-                { key: "detail", label: "Detail", icon: "🔍" },
-              ].map((level) => (
-                <button
-                  key={level.key}
-                  onClick={() =>
-                    setViewLevel(level.key as "overview" | "cluster" | "detail")
-                  }
-                  className={`px-2 py-1 text-xs font-medium rounded transition-colors ${
-                    viewLevel === level.key
-                      ? "bg-blue-100 text-blue-800 border border-blue-200"
-                      : "bg-gray-50 text-gray-600 border border-gray-200 hover:bg-gray-100"
-                  }`}
-                  title={level.label}
-                >
-                  <span className="mr-1">{level.icon}</span>
-                  <span className="hidden lg:inline">{level.label}</span>
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Cluster Style Controls - Added */}
-          <div className="flex items-center gap-2">
-            <label className="text-sm font-medium text-gray-700">Style:</label>
-            <div className="flex gap-1">
-              {[
-                { key: "none", label: "None", icon: "⭕" },
-                {
-                  key: "background",
-                  label: "Background",
-                  icon: "⬜",
-                  primary: true,
-                },
-                { key: "hull", label: "Hull", icon: "🔷" },
-                { key: "bubble", label: "Bubble", icon: "🫧" },
-                { key: "labels", label: "Labels", icon: "🏷️" },
-              ].map((style) => (
-                <button
-                  key={style.key}
-                  onClick={() => setClusterStyle(style.key)}
-                  className={`px-2 py-1 text-xs font-medium rounded transition-colors ${
-                    clusterStyle === style.key
-                      ? style.primary
-                        ? "bg-indigo-100 text-indigo-800 border border-indigo-200"
-                        : "bg-blue-100 text-blue-800 border border-blue-200"
-                      : "bg-gray-50 text-gray-600 border border-gray-200 hover:bg-gray-100"
-                  }`}
-                  title={style.label}
-                >
-                  <span>{style.icon}</span>
-                  <span className="hidden xl:inline">{style.label}</span>
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Layout Direction Controls - Added back */}
-          <div className="flex items-center gap-2">
-            <label className="text-sm font-medium text-gray-700">Layout:</label>
-            <div className="flex gap-1">
-              {[
-                { key: "TB", label: "↓", title: "Top to Bottom" },
-                { key: "LR", label: "→", title: "Left to Right" },
-              ].map((dir) => (
-                <button
-                  key={dir.key}
-                  onClick={() => setLayoutDirection(dir.key as "TB" | "LR")}
-                  title={dir.title}
-                  className={`w-8 h-8 text-sm font-medium rounded-md transition-colors ${
-                    layoutDirection === dir.key
-                      ? "bg-blue-100 text-blue-800 border border-blue-200"
-                      : "bg-gray-50 text-gray-600 border border-gray-200 hover:bg-gray-100"
-                  }`}
-                >
-                  {dir.label}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Data Management - Compact */}
-          <div className="flex items-center gap-2">
+          {/* More menu for rarely used actions */}
+          <div className="relative">
             <button
-              onClick={() => {
-                const blob = new Blob([JSON.stringify(progress, null, 2)], {
-                  type: "application/json",
-                });
-                const url = URL.createObjectURL(blob);
-                const a = document.createElement("a");
-                a.href = url;
-                a.download = `ai-learning-progress-${
-                  new Date().toISOString().split("T")[0]
-                }.json`;
-                a.click();
-                URL.revokeObjectURL(url);
-              }}
-              className="px-3 py-2 text-xs font-medium text-blue-600 bg-blue-50 border border-blue-200 rounded hover:bg-blue-100 transition-colors"
+              className="px-2 py-1.5 text-sm border rounded-md bg-white hover:bg-gray-50"
+              onClick={() => setMoreOpen((v) => !v)}
+              aria-expanded={moreOpen}
             >
-              Export
+              + More
             </button>
-            <label className="px-3 py-2 text-xs font-medium text-green-600 bg-green-50 border border-green-200 rounded hover:bg-green-100 transition-colors cursor-pointer">
-              Import
-              <input
-                type="file"
-                accept=".json"
-                className="hidden"
-                onChange={(e) => {
-                  const file = e.target.files?.[0];
-                  if (file) importProgress(file);
-                }}
-              />
-            </label>
+            {moreOpen && (
+              <div className="absolute right-0 mt-2 w-56 rounded-md border bg-white shadow-lg p-2 z-20">
+                <button
+                  className="w-full text-left px-2 py-1.5 rounded hover:bg-gray-50"
+                  onClick={exportProgress}
+                >
+                  Export Progress
+                </button>
+                <label className="w-full text-left px-2 py-1.5 rounded hover:bg-gray-50 cursor-pointer block">
+                  Import Progress
+                  <input
+                    type="file"
+                    accept=".json"
+                    className="hidden"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) importProgress(file);
+                      setMoreOpen(false);
+                    }}
+                  />
+                </label>
+              </div>
+            )}
           </div>
         </div>
+      </div>
+
+      {/* Active Filter Chips */}
+      <div className="px-3 py-1 bg-white/80 border-b border-gray-200 flex items-center gap-2 text-xs">
+        {clusterFilters.length > 0 && (
+          <>
+            {clusterFilters.map((c) => (
+              <span
+                key={c}
+                className="px-2 py-0.5 bg-gray-100 border rounded flex items-center gap-1"
+              >
+                <span className="hidden sm:inline">
+                  Cluster: {getClusterDisplayName(c)}
+                </span>
+                <span className="sm:hidden">Cluster</span>
+                <button
+                  className="text-gray-500 hover:text-gray-700"
+                  onClick={() =>
+                    setClusterFilters(clusterFilters.filter((x) => x !== c))
+                  }
+                >
+                  ×
+                </button>
+              </span>
+            ))}
+          </>
+        )}
+        <span className="px-2 py-0.5 bg-gray-100 border rounded flex items-center gap-1">
+          <span className="hidden sm:inline">Style: {clusterStyle}</span>
+          <span className="sm:hidden">Style</span>
+          <button
+            className="text-gray-500 hover:text-gray-700"
+            onClick={() => setClusterStyle("none")}
+            title="Clear style"
+          >
+            ×
+          </button>
+        </span>
+        <span className="px-2 py-0.5 bg-gray-100 border rounded flex items-center gap-1">
+          <span className="hidden sm:inline">Level: {viewLevel}</span>
+          <span className="sm:hidden">Level</span>
+          <button
+            className="text-gray-500 hover:text-gray-700"
+            onClick={() => setViewLevel("overview")}
+            title="Reset to overview"
+          >
+            ×
+          </button>
+        </span>
       </div>
 
       {/* Main Content Area - Full Height and Width */}
@@ -545,6 +595,7 @@ function AILearningGraphFlow() {
             nodes={filteredNodes}
             view={view}
             clusterFilter={clusterFilter}
+            clusterFilters={clusterFilters}
             compact={compact}
             goalId={goalId}
             search={search}

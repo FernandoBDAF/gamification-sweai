@@ -2,8 +2,11 @@
   "name": "my-ai-learning-graph",
   "version": "1.0.0",
   "private": true,
+  "packageManager": "yarn@1.22.22",
   "scripts": {
     "dev": "next dev",
+    "dev:clean": "rm -rf .next && next dev",
+    "dev:turbo": "NEXT_TELEMETRY_DISABLED=1 TURBOPACK=1 next dev",
     "build": "next build",
     "start": "next start",
     "lint": "next lint"
@@ -13,7 +16,7 @@
     "dagre": "^0.8.5",
     "framer-motion": "^11.2.10",
     "lucide-react": "^0.424.0",
-    "next": "^14.2.5",
+    "next": "^15.0.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "reactflow": "^11.10.1"

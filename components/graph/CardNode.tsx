@@ -11,6 +11,7 @@ import {
 import { TopicNode, TopicStatus } from "@/lib/types";
 import { clusterLabels } from "@/lib/constants";
 import { getClusterStyle } from "@/lib/map-constants";
+import { NodeProps } from "reactflow";
 
 export type CardNodeData = {
   topic: TopicNode;
@@ -23,9 +24,13 @@ export type CardNodeData = {
   onToggleReviewed: (id: string) => void;
   onSaveNote: (id: string, text: string) => void;
   onSetGoal: (id: string) => void;
+  highlightType?: "primary" | "dependency" | "dependent" | null;
 };
 
-export const CardNode: React.FC<{ data: CardNodeData }> = ({ data }) => {
+export const CardNode: React.FC<NodeProps<CardNodeData>> = ({
+  data,
+  selected,
+}) => {
   const {
     topic,
     status,
@@ -37,6 +42,7 @@ export const CardNode: React.FC<{ data: CardNodeData }> = ({ data }) => {
     onToggleReviewed,
     onSaveNote,
     onSetGoal,
+    highlightType,
   } = data;
   const completed = status === "completed";
   const locked = status === "locked";
@@ -57,23 +63,41 @@ export const CardNode: React.FC<{ data: CardNodeData }> = ({ data }) => {
   };
 
   const statusClasses = `${locked ? "opacity-50 grayscale" : ""}`;
+  const selectedRing = selected ? "ring-2 ring-yellow-400 shadow-lg" : "";
+
+  // Subtle glow by highlight type
+  const highlightGlow =
+    highlightType === "primary"
+      ? "0 0 0 2px rgba(59,130,246,0.6), 0 4px 12px rgba(59,130,246,0.25)" // blue
+      : highlightType === "dependency"
+        ? "0 0 0 2px rgba(245,158,11,0.6), 0 4px 12px rgba(245,158,11,0.25)" // amber
+        : highlightType === "dependent"
+          ? "0 0 0 2px rgba(16,185,129,0.6), 0 4px 12px rgba(16,185,129,0.25)" // emerald
+          : undefined;
 
   return (
     <motion.div
       whileHover={{ scale: 1.05 }}
       whileTap={{ scale: 0.98 }}
-      className={`${base} ${statusClasses} ${
+      className={`${base} ${statusClasses} ${selectedRing} ${
         isGoal ? "ring-2 ring-yellow-400 shadow-lg" : ""
       }`}
       style={{
-        background: clusterStyle.background,
+        background: "#ffffff",
         borderColor: statusColors[status],
         color: clusterStyle.text,
+        boxShadow: highlightGlow,
       }}
       transition={{ type: "spring", stiffness: 300, damping: 20 }}
     >
       <div className="flex items-start gap-2 sm:gap-3">
-        <span className="badge text-xs">
+        <span
+          className="badge text-xs"
+          style={{
+            background: clusterStyle.background,
+            color: clusterStyle.text,
+          }}
+        >
           {clusterLabels[topic.cluster] || topic.cluster}
         </span>
         <div className="ml-auto flex items-center gap-1 sm:gap-2">
@@ -94,41 +118,43 @@ export const CardNode: React.FC<{ data: CardNodeData }> = ({ data }) => {
           Deps: {topic.deps.length ? topic.deps.join(", ") : "None"}
         </div>
       )}
-      <div className="mt-3 flex flex-wrap items-center gap-1 sm:gap-2">
-        <button
-          className={`btn text-xs sm:text-sm px-2 py-1 sm:px-3 sm:py-2 ${
-            completed ? "btn-outline" : "btn-primary"
-          }`}
-          onClick={() => !locked && onToggleDone(topic.id)}
-          disabled={locked}
-        >
-          <CheckCircle className="w-3 h-3 sm:w-4 sm:h-4 mr-1 inline" />{" "}
-          {completed ? "Undo" : locked ? "Locked" : "Done"}
-        </button>
-        <button
-          className="btn btn-outline text-xs sm:text-sm px-2 py-1 sm:px-3 sm:py-2"
-          onClick={() => onToggleReviewed(topic.id)}
-        >
-          <NotebookPen className="w-3 h-3 sm:w-4 sm:h-4 mr-1 inline" />{" "}
-          {reviewed ? "✓" : "Review"}
-        </button>
-        <button
-          className="btn btn-outline text-xs sm:text-sm px-2 py-1 sm:px-3 sm:py-2"
-          onClick={() => setOpen(!open)}
-        >
-          <Columns2 className="w-3 h-3 sm:w-4 sm:h-4 mr-1 inline" />{" "}
-          {open ? "Hide" : "Details"}
-        </button>
-        <button
-          className={`btn text-xs sm:text-sm px-2 py-1 sm:px-3 sm:py-2 ${
-            isGoal ? "btn-primary" : "btn-outline"
-          }`}
-          onClick={() => onSetGoal(isGoal ? "" : topic.id)}
-        >
-          <Target className="w-3 h-3 sm:w-4 sm:h-4 mr-1 inline" />
-          {isGoal ? "Clear" : "Goal"}
-        </button>
-      </div>
+      {!compact && (
+        <div className="mt-3 flex flex-wrap items-center gap-1 sm:gap-2">
+          <button
+            className={`btn text-xs sm:text-sm px-2 py-1 sm:px-3 sm:py-2 ${
+              completed ? "btn-outline" : "btn-primary"
+            }`}
+            onClick={() => !locked && onToggleDone(topic.id)}
+            disabled={locked}
+          >
+            <CheckCircle className="w-3 h-3 sm:w-4 sm:h-4 mr-1 inline" />{" "}
+            {completed ? "Undo" : locked ? "Locked" : "Done"}
+          </button>
+          <button
+            className="btn btn-outline text-xs sm:text-sm px-2 py-1 sm:px-3 sm:py-2"
+            onClick={() => onToggleReviewed(topic.id)}
+          >
+            <NotebookPen className="w-3 h-3 sm:w-4 sm:h-4 mr-1 inline" />{" "}
+            {reviewed ? "✓" : "Review"}
+          </button>
+          <button
+            className="btn btn-outline text-xs sm:text-sm px-2 py-1 sm:px-3 sm:py-2"
+            onClick={() => setOpen(!open)}
+          >
+            <Columns2 className="w-3 h-3 sm:w-4 sm:h-4 mr-1 inline" />{" "}
+            {open ? "Hide" : "Details"}
+          </button>
+          <button
+            className={`btn text-xs sm:text-sm px-2 py-1 sm:px-3 sm:py-2 ${
+              isGoal ? "btn-primary" : "btn-outline"
+            }`}
+            onClick={() => onSetGoal(isGoal ? "" : topic.id)}
+          >
+            <Target className="w-3 h-3 sm:w-4 sm:h-4 mr-1 inline" />
+            {isGoal ? "Clear" : "Goal"}
+          </button>
+        </div>
+      )}
 
       {open && (
         <div className="mt-3 border-t pt-3 text-sm">
@@ -136,7 +162,6 @@ export const CardNode: React.FC<{ data: CardNodeData }> = ({ data }) => {
             <span className="badge text-xs">Resources</span>
             <span className="badge text-xs">Notes</span>
           </div>
-          {/* Resources */}
           {topic.links && topic.links.length > 0 ? (
             <ul className="list-disc ml-4 sm:ml-5 text-xs space-y-1">
               {topic.links.map((l, i) => (
@@ -158,7 +183,6 @@ export const CardNode: React.FC<{ data: CardNodeData }> = ({ data }) => {
               No links yet — add in data/graphData.json
             </div>
           )}
-          {/* Notes */}
           <textarea
             className="mt-2 w-full border rounded-md p-2 text-xs focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
             rows={compact ? 2 : 3}

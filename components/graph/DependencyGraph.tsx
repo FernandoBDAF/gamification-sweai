@@ -45,6 +45,7 @@ interface DependencyGraphProps {
   nodes: TopicNode[];
   view: ViewMode;
   clusterFilter: string;
+  clusterFilters?: string[]; // optional multi-select support
   compact: boolean;
   goalId: string;
   search: string;
@@ -70,6 +71,7 @@ export const DependencyGraph: React.FC<DependencyGraphProps> = ({
   nodes,
   view,
   clusterFilter,
+  clusterFilters,
   compact,
   goalId,
   search,
@@ -90,6 +92,8 @@ export const DependencyGraph: React.FC<DependencyGraphProps> = ({
   const [hoveredCluster, setHoveredCluster] = useState<string | null>(null);
   const [isZooming, setIsZooming] = useState(false);
   const zoomTimeoutRef = useRef<NodeJS.Timeout>();
+  const [hoveredNodeId, setHoveredNodeId] = useState<string | null>(null);
+  const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
 
   // Track user interaction to suppress auto fitView during manual pan/zoom
   const isUserInteractingRef = useRef(false);
@@ -146,8 +150,10 @@ export const DependencyGraph: React.FC<DependencyGraphProps> = ({
   const filteredNodes = useMemo(() => {
     let filtered = nodes.filter((node) => {
       const status = statuses[node.id];
-      const includeByCluster =
-        clusterFilter === "ALL" || node.cluster === clusterFilter;
+      const multiActive = clusterFilters && clusterFilters.length > 0;
+      const includeByCluster = multiActive
+        ? clusterFilters!.includes(node.cluster)
+        : clusterFilter === "ALL" || node.cluster === clusterFilter;
       const includeSearch =
         !search ||
         node.label.toLowerCase().includes(search.toLowerCase()) ||
@@ -176,7 +182,23 @@ export const DependencyGraph: React.FC<DependencyGraphProps> = ({
     }
 
     return filtered;
-  }, [nodes, clusterFilter, search, statuses, focusedCluster]);
+  }, [nodes, clusterFilter, clusterFilters, search, statuses, focusedCluster]);
+
+  // Compute direct dependencies/dependents for active focus node (hovered or selected)
+  const activeNodeId = selectedNodeId || hoveredNodeId;
+  const dependencyIds = useMemo(() => {
+    if (!activeNodeId) return new Set<string>();
+    const n = filteredNodes.find((n) => n.id === activeNodeId);
+    if (!n) return new Set<string>();
+    return new Set<string>(n.deps);
+  }, [activeNodeId, filteredNodes]);
+  const dependentIds = useMemo(() => {
+    if (!activeNodeId) return new Set<string>();
+    const dependents = filteredNodes.filter((n) =>
+      n.deps.includes(activeNodeId)
+    );
+    return new Set<string>(dependents.map((n) => n.id));
+  }, [activeNodeId, filteredNodes]);
 
   // Build edges from dependencies
   const buildEdges = useCallback(
@@ -519,6 +541,12 @@ export const DependencyGraph: React.FC<DependencyGraphProps> = ({
     return layoutedNodes.map((node) => {
       const status = statuses[node.id];
       const isOnGoalPath = nodesOnGoalPath.has(node.id);
+      let highlightType: "primary" | "dependency" | "dependent" | null = null;
+      if (activeNodeId) {
+        if (node.id === activeNodeId) highlightType = "primary";
+        else if (dependencyIds.has(node.id)) highlightType = "dependency";
+        else if (dependentIds.has(node.id)) highlightType = "dependent";
+      }
 
       return {
         id: node.id,
@@ -538,6 +566,7 @@ export const DependencyGraph: React.FC<DependencyGraphProps> = ({
           onSaveNote,
           onSetGoal,
           onClusterFocus: setFocusedCluster,
+          highlightType,
         },
       };
     });
@@ -553,6 +582,9 @@ export const DependencyGraph: React.FC<DependencyGraphProps> = ({
     onToggleReviewed,
     onSaveNote,
     onSetGoal,
+    activeNodeId,
+    dependencyIds,
+    dependentIds,
   ]);
 
   // Convert edges to ReactFlow format with enhanced styling
@@ -578,6 +610,44 @@ export const DependencyGraph: React.FC<DependencyGraphProps> = ({
         markerEnd: defaultEdgeOptions.markerEnd,
         style: defaultEdgeOptions.style,
       };
+
+      // Dependency/dependent highlighting relative to active node
+      if (activeNodeId) {
+        if (edge.target === activeNodeId && dependencyIds.has(edge.source)) {
+          baseEdge.style = {
+            ...baseEdge.style,
+            stroke: "#f59e0b",
+            strokeWidth: 3,
+            opacity: 0.95,
+            strokeDasharray: "6 4",
+          };
+          baseEdge.animated = true;
+          baseEdge.markerEnd = {
+            type: MarkerType.ArrowClosed,
+            width: 16,
+            height: 16,
+            color: "#f59e0b",
+          };
+        } else if (
+          edge.source === activeNodeId &&
+          dependentIds.has(edge.target)
+        ) {
+          baseEdge.style = {
+            ...baseEdge.style,
+            stroke: "#10b981",
+            strokeWidth: 3,
+            opacity: 0.95,
+            strokeDasharray: "6 4",
+          };
+          baseEdge.animated = true;
+          baseEdge.markerEnd = {
+            type: MarkerType.ArrowClosed,
+            width: 16,
+            height: 16,
+            color: "#10b981",
+          };
+        }
+      }
 
       // Apply styling based on edge type
       if (isOnGoalPath) {
@@ -662,6 +732,9 @@ export const DependencyGraph: React.FC<DependencyGraphProps> = ({
     statuses,
     focusedCluster,
     hoveredCluster,
+    activeNodeId,
+    dependencyIds,
+    dependentIds,
   ]);
 
   // Handle cluster interactions
@@ -676,18 +749,15 @@ export const DependencyGraph: React.FC<DependencyGraphProps> = ({
 
       // Find all nodes in the clicked cluster
       const clusterNodes = filteredNodes.filter(
-        (node) => node.data.cluster === clusterId
+        (node) => node.cluster === clusterId
       );
 
       if (clusterNodes.length > 0) {
         // Fit view to the cluster with appropriate padding
-        const padding =
-          viewLevel === "detail" ? 0.05 : viewLevel === "overview" ? 0.2 : 0.1;
-
         fitView({
-          nodes: clusterNodes,
-          padding,
-          duration: 600,
+          nodes: clusterNodes.map((n) => ({ id: n.id })),
+          padding: 0.15,
+          duration: 400,
           includeHiddenNodes: false,
         });
 
@@ -699,7 +769,7 @@ export const DependencyGraph: React.FC<DependencyGraphProps> = ({
         // TODO: Add cluster selection highlight and side panel details
       }
     },
-    [filteredNodes, viewLevel, fitView]
+    [filteredNodes, fitView]
   );
 
   // Auto-fit view when nodes change - FIXED: Only when not zooming
@@ -737,6 +807,9 @@ export const DependencyGraph: React.FC<DependencyGraphProps> = ({
         nodesDraggable={false} // Disable dragging for consistent layout
         nodesConnectable={false} // Disable connection creation
         elementsSelectable={true} // Allow selection for better UX
+        onNodeMouseEnter={(_, node) => setHoveredNodeId(node.id)}
+        onNodeMouseLeave={() => setHoveredNodeId(null)}
+        onPaneClick={() => setSelectedNodeId(null)}
         onMoveStart={() => {
           isUserInteractingRef.current = true;
         }}
@@ -749,23 +822,17 @@ export const DependencyGraph: React.FC<DependencyGraphProps> = ({
         onNodeClick={(e, node) => {
           // Prevent event bubbling
           e.preventDefault();
+          setSelectedNodeId((prev) => (prev === node.id ? null : node.id));
 
           // Get node data for enhanced selection
           const nodeData = node.data;
           const isOnGoalPath = nodesOnGoalPath.has(node.id);
 
-          // Enhanced fit view with different padding based on view level
-          const padding =
-            viewLevel === "detail"
-              ? 0.03
-              : viewLevel === "overview"
-                ? 0.25
-                : 0.15;
-
+          // Fit to node with spec padding/duration
           fitView({
             nodes: [{ id: node.id }],
-            padding,
-            duration: 600,
+            padding: viewLevel === "detail" ? 0.05 : 0.15,
+            duration: 400,
             includeHiddenNodes: false,
           });
 
@@ -832,26 +899,28 @@ export const DependencyGraph: React.FC<DependencyGraphProps> = ({
 
         {/* FIXED: Cluster Visualization Layer - Ensure proper rendering */}
         {/* Cluster overlays should follow the RF viewport but NOT affect layout size */}
-        <div
-          className="absolute top-0 left-0 pointer-events-none"
-          style={{
-            width: "100%",
-            height: "100%",
-            transform: `translate(${tx}px, ${ty}px) scale(${k})`,
-            transformOrigin: "0 0",
-            zIndex: 0,
-          }}
-        >
-          <ClusterVisualization
-            nodes={filteredNodes}
-            nodePositions={nodePositions}
-            completedNodes={completedNodes}
-            style={clusterVisualizationStyle}
-            zoomLevel={k}
-            onClusterHover={handleClusterHover}
-            onClusterClick={handleClusterClick}
-          />
-        </div>
+        {clusterVisualizationStyle !== "none" && (
+          <div
+            className="absolute top-0 left-0 pointer-events-none"
+            style={{
+              width: "100%",
+              height: "100%",
+              transform: `translate(${tx}px, ${ty}px) scale(${k})`,
+              transformOrigin: "0 0",
+              zIndex: 0,
+            }}
+          >
+            <ClusterVisualization
+              nodes={filteredNodes}
+              nodePositions={nodePositions}
+              completedNodes={completedNodes}
+              style={clusterVisualizationStyle}
+              zoomLevel={k}
+              onClusterHover={handleClusterHover}
+              onClusterClick={handleClusterClick}
+            />
+          </div>
+        )}
       </ReactFlow>
 
       {/* Visual Legend */}

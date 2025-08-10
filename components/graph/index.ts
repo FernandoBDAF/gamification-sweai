@@ -1,4 +1,4 @@
-import { MarkerType } from "reactflow";
+import { MarkerType, NodeTypes } from "reactflow";
 import { CardNode } from "./CardNode";
 import { TechTreeNode } from "./TechTreeNode";
 import { MAP_CONSTANTS } from "@/lib/map-constants";
@@ -16,9 +16,9 @@ export {
 } from "./ClusterVisualization";
 
 // Enhanced node types for React Flow with Civilization-inspired design
-export const nodeTypes = {
-  card: CardNode, // Legacy card node (kept for compatibility)
-  techTree: TechTreeNode, // New Civilization-inspired node
+export const nodeTypes: NodeTypes = {
+  card: CardNode as any,
+  techTree: TechTreeNode as any,
 };
 
 // Enhanced edge options with Civilization-inspired styling

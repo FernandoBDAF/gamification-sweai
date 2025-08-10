@@ -1,16 +1,20 @@
 import React, { useState, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { TopicNode } from "@/lib/types";
-import { getClusterLabel, getClusterStyle } from "@/lib/map-constants";
+import {
+  getClusterLabel,
+  getClusterStyle,
+  CLUSTER_STYLE,
+} from "@/lib/map-constants";
 import {
   ClusterVisualizationStyle,
   ClusterVisualizationData,
   CLUSTER_VIZ_CONSTANTS,
   generateClusterVisualization,
   generateClusterCSS,
-  generateConvexHullPath,
   calculateLabelPosition,
 } from "@/lib/cluster-visualization";
+import { convexHull, inflateHull, roundedPath } from "@/lib/cluster-geometry";
 
 interface ClusterVisualizationProps {
   nodes: TopicNode[];
@@ -123,20 +127,24 @@ export const ClusterVisualization: React.FC<ClusterVisualizationProps> = ({
                 onClick={handleClusterClick}
               />
 
-              {/* ENHANCED: Render convex hull if style is selected */}
+              {/* Hull path rendering when style is selected */}
               {style === "convex-hull-polygon" && (
                 <ConvexHullShape
                   clusterData={cluster}
                   isHovered={hoveredCluster === clusterId}
+                  onHover={handleClusterHover}
+                  onClick={handleClusterClick}
                 />
               )}
 
-              {/* ENHANCED: Always show labels for better visibility */}
-              <EnhancedClusterLabel
-                clusterData={cluster}
-                zoomLevel={zoomLevel}
-                isHovered={hoveredCluster === clusterId}
-              />
+              {/* Labels style: always show labels regardless of zoom */}
+              {style === "label-positioning" && (
+                <EnhancedClusterLabel
+                  clusterData={cluster}
+                  zoomLevel={zoomLevel}
+                  isHovered={hoveredCluster === clusterId}
+                />
+              )}
 
               {/* ENHANCED: Show tooltip on hover for all styles */}
               {hoveredCluster === clusterId && (
@@ -206,74 +214,34 @@ const ClusterShape: React.FC<ClusterShapeProps> = ({
 
   // ENHANCED: Render different styles with better visibility
   switch (style) {
-    case "translucent-background":
+    case "translucent-background": {
+      // Simple rounded rectangle over bbox, faint fill, no stroke, non-blocking
+      const pad = 12;
+      const rgb = hexToRgb(clusterStyle.primary);
+      const fill = rgb
+        ? `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.1)`
+        : `${clusterStyle.primary}1A`;
       return (
-        <motion.div
-          className="absolute pointer-events-auto rounded-2xl border-2 cursor-pointer"
+        <div
+          className="absolute rounded-2xl pointer-events-none"
           style={{
-            left: bounds.minX - getPadding(),
-            top: bounds.minY - getPadding(),
-            width: bounds.width + getPadding() * 2,
-            height: bounds.height + getPadding() * 2,
-            background: clusterStyle.background,
-            borderColor: `${clusterStyle.primary}${Math.round(
-              getBorderOpacity() * 255
-            )
-              .toString(16)
-              .padStart(2, "0")}`,
-            borderWidth: CLUSTER_VIZ_CONSTANTS.TRANSLUCENT.BORDER_WIDTH,
-            borderRadius: CLUSTER_VIZ_CONSTANTS.TRANSLUCENT.BORDER_RADIUS,
-            opacity: getOpacity(),
-            zIndex: CLUSTER_VIZ_CONSTANTS.TRANSLUCENT.Z_INDEX,
-          }}
-          onMouseEnter={handleMouseEnter}
-          onMouseLeave={handleMouseLeave}
-          onClick={handleClick}
-          whileHover={{
-            scale: 1.02,
-            opacity: getOpacity() * 1.3,
-            borderColor: clusterStyle.primary,
-          }}
-          transition={{
-            duration: CLUSTER_VIZ_CONSTANTS.ANIMATION.HOVER_DURATION / 1000,
-            ease: CLUSTER_VIZ_CONSTANTS.ANIMATION.EASING,
+            left: bounds.minX - pad,
+            top: bounds.minY - pad,
+            width: bounds.width + pad * 2,
+            height: bounds.height + pad * 2,
+            background: fill,
           }}
         />
       );
+    }
 
     case "blurred-bubble":
+      // Render a blurred glow based on hull path (inflated padding)
       return (
-        <motion.div
-          className="absolute pointer-events-auto cursor-pointer"
-          style={{
-            left: bounds.minX - CLUSTER_VIZ_CONSTANTS.BLURRED_BUBBLE.PADDING,
-            top: bounds.minY - CLUSTER_VIZ_CONSTANTS.BLURRED_BUBBLE.PADDING,
-            width:
-              bounds.width + CLUSTER_VIZ_CONSTANTS.BLURRED_BUBBLE.PADDING * 2,
-            height:
-              bounds.height + CLUSTER_VIZ_CONSTANTS.BLURRED_BUBBLE.PADDING * 2,
-            background: `radial-gradient(circle, ${clusterStyle.primary}20 0%, ${clusterStyle.primary}10 70%, transparent 100%)`,
-            borderRadius: "50%",
-            filter: `blur(${CLUSTER_VIZ_CONSTANTS.BLURRED_BUBBLE.BLUR_RADIUS}px)`,
-            opacity: isHovered
-              ? CLUSTER_VIZ_CONSTANTS.BLURRED_BUBBLE.HOVER_OPACITY
-              : CLUSTER_VIZ_CONSTANTS.BLURRED_BUBBLE.OPACITY,
-            zIndex: 0,
-          }}
-          onMouseEnter={handleMouseEnter}
-          onMouseLeave={handleMouseLeave}
-          onClick={handleClick}
-          whileHover={{
-            scale: 1.05,
-            filter: `blur(${
-              CLUSTER_VIZ_CONSTANTS.BLURRED_BUBBLE.BLUR_RADIUS * 0.7
-            }px)`,
-            opacity: CLUSTER_VIZ_CONSTANTS.BLURRED_BUBBLE.HOVER_OPACITY * 1.2,
-          }}
-          transition={{
-            duration: CLUSTER_VIZ_CONSTANTS.ANIMATION.HOVER_DURATION / 1000,
-            ease: CLUSTER_VIZ_CONSTANTS.ANIMATION.EASING,
-          }}
+        <BlurredHullGlow
+          clusterId={clusterId}
+          nodes={nodes}
+          color={clusterStyle.primary}
         />
       );
 
@@ -294,13 +262,21 @@ const ClusterShape: React.FC<ClusterShapeProps> = ({
 interface ConvexHullShapeProps {
   clusterData: ClusterVisualizationData;
   isHovered: boolean;
+  onHover?: (clusterId: string | null) => void;
+  onClick?: (clusterId: string) => void;
 }
 
 const ConvexHullShape: React.FC<ConvexHullShapeProps> = ({
   clusterData,
   isHovered,
+  onHover,
+  onClick,
 }) => {
   const { nodes, bounds, clusterId } = clusterData;
+  // No-op handlers to satisfy path event bindings without blocking
+  const handleMouseEnter = () => {};
+  const handleMouseLeave = () => {};
+  const handleClick = () => {};
 
   // FIXED: Error handling for cluster style
   let clusterStyle;
@@ -317,57 +293,124 @@ const ConvexHullShape: React.FC<ConvexHullShapeProps> = ({
     };
   }
 
-  // ENHANCED: Generate SVG path with zoom level and error handling
-  let hullPath;
-  try {
-    hullPath = generateConvexHullPath(nodes, undefined, 1); // Default zoom level 1
-  } catch (error) {
-    console.warn(`Failed to generate convex hull for ${clusterId}:`, error);
-    // Fallback to simple rectangle path
-    hullPath = `M ${bounds.minX} ${bounds.minY} L ${bounds.maxX} ${bounds.minY} L ${bounds.maxX} ${bounds.maxY} L ${bounds.minX} ${bounds.maxY} Z`;
-  }
+  // Build hull from node rectangles, inflate & round
+  const rectCorners = nodes.flatMap((n) => [
+    { x: n.x, y: n.y },
+    { x: n.x + n.width, y: n.y },
+    { x: n.x + n.width, y: n.y + n.height },
+    { x: n.x, y: n.y + n.height },
+  ]);
+  const hull = convexHull(rectCorners);
+  const inflated = inflateHull(hull, CLUSTER_STYLE.HULL_PADDING);
+  const hullPath = roundedPath(inflated, CLUSTER_STYLE.HULL_CORNER_RADIUS);
 
-  const strokeOpacity = isHovered
-    ? CLUSTER_VIZ_CONSTANTS.CONVEX_HULL.HOVER_STROKE_OPACITY
-    : CLUSTER_VIZ_CONSTANTS.CONVEX_HULL.STROKE_OPACITY;
+  // Bounds for viewBox
+  const xs = inflated.map((p) => p.x);
+  const ys = inflated.map((p) => p.y);
+  const minX = Math.min(...xs) - 20;
+  const minY = Math.min(...ys) - 20;
+  const maxX = Math.max(...xs) + 20;
+  const maxY = Math.max(...ys) + 20;
+  const width = maxX - minX;
+  const height = maxY - minY;
 
+  const strokeOpacity = isHovered ? 0.9 : 0.8;
   const fillOpacity = isHovered
-    ? CLUSTER_VIZ_CONSTANTS.CONVEX_HULL.HOVER_FILL_OPACITY
-    : CLUSTER_VIZ_CONSTANTS.CONVEX_HULL.FILL_OPACITY;
+    ? CLUSTER_STYLE.FILL_OPACITY * 1.2
+    : CLUSTER_STYLE.FILL_OPACITY;
 
   if (!hullPath) return null;
+
+  const fillColor = withAlpha(clusterStyle.primary, fillOpacity);
+  return (
+    <svg
+      className="absolute inset-0 w-full h-full"
+      viewBox={`${minX} ${minY} ${width} ${height}`}
+      style={{ overflow: "visible" }}
+    >
+      <motion.path
+        d={hullPath}
+        fill={fillColor}
+        stroke={clusterStyle.primary}
+        strokeWidth={CLUSTER_STYLE.STROKE_WIDTH}
+        strokeOpacity={strokeOpacity}
+        initial={{ pathLength: 0, opacity: 0 }}
+        animate={{ pathLength: 1, opacity: 1 }}
+        transition={{
+          pathLength: { duration: 0.8 },
+          opacity: { duration: 0.3 },
+        }}
+        style={{
+          strokeLinecap: "round",
+          strokeLinejoin: "round",
+          pointerEvents: "none",
+        }}
+      />
+      {/* Invisible stroke-only path to capture hover/click without blocking fill */}
+      <path
+        d={hullPath}
+        fill="none"
+        stroke="transparent"
+        strokeWidth={20}
+        style={{ pointerEvents: "stroke" }}
+        onMouseEnter={() => onHover?.(clusterId)}
+        onMouseLeave={() => onHover?.(null)}
+        onClick={() => onClick?.(clusterId)}
+      />
+    </svg>
+  );
+};
+
+// Blurred glow based on hull path
+const BlurredHullGlow: React.FC<{
+  clusterId: string;
+  nodes: ClusterVisualizationData["nodes"];
+  color: string;
+}> = ({ clusterId, nodes, color }) => {
+  const rectCorners = nodes.flatMap((n) => [
+    { x: n.x, y: n.y },
+    { x: n.x + n.width, y: n.y },
+    { x: n.x + n.width, y: n.y + n.height },
+    { x: n.x, y: n.y + n.height },
+  ]);
+  const hull = convexHull(rectCorners);
+  const inflated = inflateHull(hull, CLUSTER_STYLE.HULL_PADDING + 30);
+  const path = roundedPath(inflated, CLUSTER_STYLE.HULL_CORNER_RADIUS);
+
+  // Bounds for viewBox
+  const xs = inflated.map((p) => p.x);
+  const ys = inflated.map((p) => p.y);
+  const minX = Math.min(...xs) - 20;
+  const minY = Math.min(...ys) - 20;
+  const maxX = Math.max(...xs) + 20;
+  const maxY = Math.max(...ys) + 20;
+  const width = maxX - minX;
+  const height = maxY - minY;
+
+  const fill = withAlpha(color, 0.18);
 
   return (
     <svg
       className="absolute inset-0 w-full h-full"
-      viewBox={`${bounds.minX} ${bounds.minY} ${bounds.width} ${bounds.height}`}
+      viewBox={`${minX} ${minY} ${width} ${height}`}
       style={{ overflow: "visible" }}
     >
       <defs>
-        <filter id={`cluster-glow-${clusterId}`}>
-          <feGaussianBlur stdDeviation="4" result="coloredBlur" />
-          <feMerge>
-            <feMergeNode in="coloredBlur" />
-            <feMergeNode in="SourceGraphic" />
-          </feMerge>
+        <filter
+          id={`blur-${clusterId}`}
+          x="-50%"
+          y="-50%"
+          width="200%"
+          height="200%"
+        >
+          <feGaussianBlur in="SourceGraphic" stdDeviation="12" />
         </filter>
       </defs>
-
-      <motion.path
-        d={hullPath}
-        fill={`${clusterStyle.primary}${Math.round(fillOpacity * 255)
-          .toString(16)
-          .padStart(2, "0")}`}
-        stroke={clusterStyle.primary}
-        strokeWidth={CLUSTER_VIZ_CONSTANTS.CONVEX_HULL.STROKE_WIDTH}
-        strokeOpacity={strokeOpacity}
-        filter={isHovered ? `url(#cluster-glow-${clusterId})` : undefined}
-        initial={{ pathLength: 0, opacity: 0 }}
-        animate={{ pathLength: 1, opacity: 1 }}
-        transition={{
-          pathLength: { duration: 0.8, ease: "easeInOut" },
-          opacity: { duration: 0.3 },
-        }}
+      <path
+        d={path}
+        fill={fill}
+        filter={`url(#blur-${clusterId})`}
+        style={{ pointerEvents: "none" }}
       />
     </svg>
   );
@@ -640,3 +683,20 @@ export const ClusterVisualizationSettings: React.FC<
     </div>
   );
 };
+
+function hexToRgb(hex: string): { r: number; g: number; b: number } | null {
+  const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+  return result
+    ? {
+        r: parseInt(result[1], 16),
+        g: parseInt(result[2], 16),
+        b: parseInt(result[3], 16),
+      }
+    : null;
+}
+
+function withAlpha(hex: string, alpha: number): string {
+  const rgb = hexToRgb(hex);
+  if (!rgb) return hex;
+  return `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${alpha})`;
+}
