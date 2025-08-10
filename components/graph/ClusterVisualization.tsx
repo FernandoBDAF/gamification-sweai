@@ -73,13 +73,18 @@ export const ClusterVisualization: React.FC<ClusterVisualizationProps> = ({
     onClusterHover?.(clusterId);
   };
 
+  const handleClusterClick = (clusterId: string) => {
+    onClusterClick?.(clusterId);
+  };
+
   // FIXED: Always render container for debugging, even when empty
   if (style === "none") return null;
 
   return (
+    /* Important: this wrapper must not create its own scrollable area or intrinsic size. */
     <div
       className="absolute inset-0 pointer-events-none"
-      style={{ zIndex: 1 }}
+      style={{ zIndex: 1, width: "100%", height: "100%" }}
       data-testid="cluster-visualization"
     >
       <AnimatePresence mode="sync">
@@ -101,44 +106,42 @@ export const ClusterVisualization: React.FC<ClusterVisualizationProps> = ({
                 width: bounds.width,
                 height: bounds.height,
               }}
-              initial={{ opacity: 0, scale: 0.8 }}
+              initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.8 }}
+              exit={{ opacity: 0, scale: 0.95 }}
               transition={{
                 duration: CLUSTER_VIZ_CONSTANTS.ANIMATION.DURATION / 1000,
-                ease: "easeOut",
+                ease: CLUSTER_VIZ_CONSTANTS.ANIMATION.EASING,
               }}
-              onMouseEnter={() => onClusterHover?.(clusterId)}
-              onMouseLeave={() => onClusterHover?.(null)}
-              onClick={() => onClusterClick?.(clusterId)}
             >
-              <div
-                className="w-full h-full cursor-pointer"
-                style={generateClusterCSS(
-                  cluster,
-                  hoveredCluster === clusterId,
-                  zoomLevel
-                )}
-              >
-                {style === "label-positioning" && (
-                  <div
-                    className="absolute flex items-center justify-center text-white font-bold text-sm pointer-events-none"
-                    style={{
-                      left: bounds.width / 2 - 40,
-                      top: bounds.height / 2 - 10,
-                      width: 80,
-                      height: 20,
-                      backgroundColor:
-                        CLUSTER_VIZ_CONSTANTS.LABEL_POSITIONING
-                          .BACKGROUND_COLOR,
-                      borderRadius:
-                        CLUSTER_VIZ_CONSTANTS.LABEL_POSITIONING.BORDER_RADIUS,
-                    }}
-                  >
-                    {clusterId} ({completionPct}%)
-                  </div>
-                )}
-              </div>
+              {/* ENHANCED: Render cluster shape based on style */}
+              <ClusterShape
+                clusterData={cluster}
+                isHovered={hoveredCluster === clusterId}
+                zoomLevel={zoomLevel}
+                onHover={handleClusterHover}
+                onClick={handleClusterClick}
+              />
+
+              {/* ENHANCED: Render convex hull if style is selected */}
+              {style === "convex-hull-polygon" && (
+                <ConvexHullShape
+                  clusterData={cluster}
+                  isHovered={hoveredCluster === clusterId}
+                />
+              )}
+
+              {/* ENHANCED: Always show labels for better visibility */}
+              <EnhancedClusterLabel
+                clusterData={cluster}
+                zoomLevel={zoomLevel}
+                isHovered={hoveredCluster === clusterId}
+              />
+
+              {/* ENHANCED: Show tooltip on hover for all styles */}
+              {hoveredCluster === clusterId && (
+                <ClusterTooltip clusterData={cluster} zoomLevel={zoomLevel} />
+              )}
             </motion.div>
           );
         })}
@@ -162,65 +165,130 @@ const ClusterShape: React.FC<ClusterShapeProps> = ({
   onHover,
   onClick,
 }) => {
-  const { clusterId, style, bounds } = clusterData;
+  const { clusterId, bounds, nodes, style } = clusterData;
+
+  // ENHANCED: Get cluster style with error handling
+  let clusterStyle;
+  try {
+    clusterStyle = getClusterStyle(clusterId);
+  } catch (error) {
+    console.warn(`Failed to get cluster style for ${clusterId}:`, error);
+    clusterStyle = {
+      primary: "#6b7280",
+      background: "linear-gradient(135deg, #f9fafb 0%, #f3f4f6 100%)",
+      border: "#6b7280",
+      text: "#374151",
+      accent: "#9ca3af",
+    };
+  }
+
+  // ENHANCED: Dynamic opacity based on zoom level and style
+  const getOpacity = () => {
+    const baseOpacity = style === "translucent-background" ? 0.45 : 0.35;
+    const zoomFactor = Math.max(0.5, Math.min(1.5, zoomLevel));
+    return Math.min(0.8, baseOpacity * zoomFactor);
+  };
+
+  const getBorderOpacity = () => {
+    const baseOpacity = style === "translucent-background" ? 0.75 : 0.6;
+    return isHovered ? Math.min(1.0, baseOpacity * 1.3) : baseOpacity;
+  };
+
+  // ENHANCED: Dynamic padding based on zoom level
+  const getPadding = () => {
+    const basePadding = CLUSTER_VIZ_CONSTANTS.TRANSLUCENT.PADDING;
+    return basePadding * Math.max(0.7, Math.min(1.5, zoomLevel));
+  };
 
   const handleMouseEnter = () => onHover(clusterId);
   const handleMouseLeave = () => onHover(null);
   const handleClick = () => onClick?.(clusterId);
 
-  // FIXED: Generate styles with error handling
-  let containerStyle;
-  try {
-    containerStyle = generateClusterCSS(clusterData, isHovered, zoomLevel);
-  } catch (error) {
-    console.warn(`Failed to generate CSS for cluster ${clusterId}:`, error);
-    containerStyle = {
-      position: "absolute" as const,
-      left: bounds.minX,
-      top: bounds.minY,
-      width: bounds.width,
-      height: bounds.height,
-      backgroundColor: "rgba(0, 0, 0, 0.1)",
-      border: "1px solid rgba(0, 0, 0, 0.2)",
-      borderRadius: "8px",
-    };
+  // ENHANCED: Render different styles with better visibility
+  switch (style) {
+    case "translucent-background":
+      return (
+        <motion.div
+          className="absolute pointer-events-auto rounded-2xl border-2 cursor-pointer"
+          style={{
+            left: bounds.minX - getPadding(),
+            top: bounds.minY - getPadding(),
+            width: bounds.width + getPadding() * 2,
+            height: bounds.height + getPadding() * 2,
+            background: clusterStyle.background,
+            borderColor: `${clusterStyle.primary}${Math.round(
+              getBorderOpacity() * 255
+            )
+              .toString(16)
+              .padStart(2, "0")}`,
+            borderWidth: CLUSTER_VIZ_CONSTANTS.TRANSLUCENT.BORDER_WIDTH,
+            borderRadius: CLUSTER_VIZ_CONSTANTS.TRANSLUCENT.BORDER_RADIUS,
+            opacity: getOpacity(),
+            zIndex: CLUSTER_VIZ_CONSTANTS.TRANSLUCENT.Z_INDEX,
+          }}
+          onMouseEnter={handleMouseEnter}
+          onMouseLeave={handleMouseLeave}
+          onClick={handleClick}
+          whileHover={{
+            scale: 1.02,
+            opacity: getOpacity() * 1.3,
+            borderColor: clusterStyle.primary,
+          }}
+          transition={{
+            duration: CLUSTER_VIZ_CONSTANTS.ANIMATION.HOVER_DURATION / 1000,
+            ease: CLUSTER_VIZ_CONSTANTS.ANIMATION.EASING,
+          }}
+        />
+      );
+
+    case "blurred-bubble":
+      return (
+        <motion.div
+          className="absolute pointer-events-auto cursor-pointer"
+          style={{
+            left: bounds.minX - CLUSTER_VIZ_CONSTANTS.BLURRED_BUBBLE.PADDING,
+            top: bounds.minY - CLUSTER_VIZ_CONSTANTS.BLURRED_BUBBLE.PADDING,
+            width:
+              bounds.width + CLUSTER_VIZ_CONSTANTS.BLURRED_BUBBLE.PADDING * 2,
+            height:
+              bounds.height + CLUSTER_VIZ_CONSTANTS.BLURRED_BUBBLE.PADDING * 2,
+            background: `radial-gradient(circle, ${clusterStyle.primary}20 0%, ${clusterStyle.primary}10 70%, transparent 100%)`,
+            borderRadius: "50%",
+            filter: `blur(${CLUSTER_VIZ_CONSTANTS.BLURRED_BUBBLE.BLUR_RADIUS}px)`,
+            opacity: isHovered
+              ? CLUSTER_VIZ_CONSTANTS.BLURRED_BUBBLE.HOVER_OPACITY
+              : CLUSTER_VIZ_CONSTANTS.BLURRED_BUBBLE.OPACITY,
+            zIndex: 0,
+          }}
+          onMouseEnter={handleMouseEnter}
+          onMouseLeave={handleMouseLeave}
+          onClick={handleClick}
+          whileHover={{
+            scale: 1.05,
+            filter: `blur(${
+              CLUSTER_VIZ_CONSTANTS.BLURRED_BUBBLE.BLUR_RADIUS * 0.7
+            }px)`,
+            opacity: CLUSTER_VIZ_CONSTANTS.BLURRED_BUBBLE.HOVER_OPACITY * 1.2,
+          }}
+          transition={{
+            duration: CLUSTER_VIZ_CONSTANTS.ANIMATION.HOVER_DURATION / 1000,
+            ease: CLUSTER_VIZ_CONSTANTS.ANIMATION.EASING,
+          }}
+        />
+      );
+
+    case "convex-hull-polygon":
+      // This will be handled by the dedicated ConvexHullShape component
+      return null;
+
+    case "label-positioning":
+      // This will be handled by the EnhancedClusterLabel component
+      return null;
+
+    case "none":
+    default:
+      return null;
   }
-
-  return (
-    <motion.div
-      initial={{ opacity: 0, scale: 0.98 }}
-      animate={{ opacity: 1, scale: 1 }}
-      exit={{ opacity: 0, scale: 0.98 }}
-      transition={{
-        duration: CLUSTER_VIZ_CONSTANTS.ANIMATION.DURATION / 1000,
-        ease: [0.4, 0, 0.2, 1],
-      }}
-      className="absolute"
-      style={containerStyle}
-      onMouseEnter={handleMouseEnter}
-      onMouseLeave={handleMouseLeave}
-      onClick={handleClick}
-      data-testid={`cluster-${clusterId}`}
-    >
-      {/* FIXED: Render specific cluster shape based on style with error boundaries */}
-      {style === "convex-hull-polygon" && (
-        <ConvexHullShape clusterData={clusterData} isHovered={isHovered} />
-      )}
-
-      {/* FIXED: Enhanced cluster label with better error handling */}
-      <EnhancedClusterLabel
-        clusterData={clusterData}
-        zoomLevel={zoomLevel}
-        isHovered={isHovered}
-      />
-
-      {/* FIXED: Hover tooltip with conditional rendering */}
-      {isHovered &&
-        (style === "translucent-background" || style === "blurred-bubble") && (
-          <ClusterTooltip clusterData={clusterData} zoomLevel={zoomLevel} />
-        )}
-    </motion.div>
-  );
 };
 
 interface ConvexHullShapeProps {
@@ -249,10 +317,10 @@ const ConvexHullShape: React.FC<ConvexHullShapeProps> = ({
     };
   }
 
-  // FIXED: Generate SVG path with error handling
+  // ENHANCED: Generate SVG path with zoom level and error handling
   let hullPath;
   try {
-    hullPath = generateConvexHullPath(nodes);
+    hullPath = generateConvexHullPath(nodes, undefined, 1); // Default zoom level 1
   } catch (error) {
     console.warn(`Failed to generate convex hull for ${clusterId}:`, error);
     // Fallback to simple rectangle path
@@ -277,7 +345,7 @@ const ConvexHullShape: React.FC<ConvexHullShapeProps> = ({
     >
       <defs>
         <filter id={`cluster-glow-${clusterId}`}>
-          <feGaussianBlur stdDeviation="3" result="coloredBlur" />
+          <feGaussianBlur stdDeviation="4" result="coloredBlur" />
           <feMerge>
             <feMergeNode in="coloredBlur" />
             <feMergeNode in="SourceGraphic" />

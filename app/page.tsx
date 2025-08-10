@@ -2,7 +2,7 @@ import AILearningGraph from "@/components/AILearningGraph";
 
 export default function Page() {
   return (
-    <main className="flex-1 min-h-0 flex flex-col">
+    <main className="flex-1 min-h-0 min-w-0 flex flex-col overflow-hidden">
       {/* Compact Top Navigation Bar with Title and Controls */}
       <nav className="bg-white border-b border-gray-200 shadow-sm flex-shrink-0">
         <div className="px-4 py-3">
@@ -32,7 +32,7 @@ export default function Page() {
       </nav>
 
       {/* Main Content - Full Screen Layout with Integrated Sidebar */}
-      <section className="relative flex-1 min-h-0">
+      <section className="relative flex-1 min-h-0 min-w-0 overflow-hidden">
         <AILearningGraph />
       </section>
     </main>

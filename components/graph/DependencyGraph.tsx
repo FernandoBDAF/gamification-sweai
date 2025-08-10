@@ -262,22 +262,49 @@ export const DependencyGraph: React.FC<DependencyGraphProps> = ({
     []
   );
 
-  // ENHANCED: Determine size variant with more dramatic differences
-  const getSizeVariant = useCallback((): SizeVariant => {
-    if (compact) return "compact";
+  // ENHANCED: Get size variant based on view level for more dramatic differences
+  const getSizeVariant = useCallback(() => {
+    switch (viewLevel) {
+      case "overview":
+        return "compact"; // Much smaller nodes for overview
+      case "detail":
+        return "expanded"; // Larger nodes for detail view
+      case "cluster":
+      default:
+        return "standard"; // Standard size for cluster view
+    }
+  }, [viewLevel]);
 
-    // More dramatic size differences based on view level
-    if (viewLevel === "overview") return "compact"; // Always compact in overview for density
-    if (viewLevel === "detail") return "expanded"; // Always expanded in detail for clarity
-    if (focusedCluster) return "expanded"; // Expanded when cluster focused
-
-    return "standard"; // Standard for cluster view
-  }, [compact, viewLevel, focusedCluster]);
+  // ENHANCED: Get layout spacing based on view level
+  const getLayoutSpacing = useCallback(() => {
+    switch (viewLevel) {
+      case "overview":
+        return {
+          nodeSpacing: 0.4, // Very compact spacing
+          clusterSpacing: 0.6, // Tighter cluster separation
+          padding: 0.15, // Minimal padding
+        };
+      case "detail":
+        return {
+          nodeSpacing: 2.5, // Much more expanded spacing
+          clusterSpacing: 1.8, // Generous cluster separation
+          padding: 0.05, // Minimal padding for detail focus
+        };
+      case "cluster":
+      default:
+        return {
+          nodeSpacing: 1.0, // Standard balanced spacing
+          clusterSpacing: 1.0, // Standard cluster separation
+          padding: 0.1, // Standard padding
+        };
+    }
+  }, [viewLevel]);
 
   // FIXED: Layout nodes using view-level aware algorithm
   const { nodes: layoutedNodes, edges: layoutedEdges } = useMemo(() => {
     const edges = buildEdges(filteredNodes);
     const sizeVariant = getSizeVariant();
+    const { nodeSpacing, clusterSpacing, padding } = getLayoutSpacing();
 
     // FIXED: Use zoomLevel to determine layout strategy with dramatic differences
     if (viewLevel === "cluster" && focusedCluster) {
@@ -293,7 +320,7 @@ export const DependencyGraph: React.FC<DependencyGraphProps> = ({
       // Overview mode - much more compact layout showing all clusters
       return layoutDagre(filteredNodes, edges, layoutDir, sizeVariant, {
         clusterSpacing: true,
-        nodeSpacing: 0.6, // Much tighter spacing
+        nodeSpacing: nodeSpacing, // Much tighter spacing
         expandedSpacing: false,
       });
     } else if (viewLevel === "detail") {
@@ -301,13 +328,13 @@ export const DependencyGraph: React.FC<DependencyGraphProps> = ({
       return layoutDagre(filteredNodes, edges, layoutDir, sizeVariant, {
         clusterSpacing: true,
         expandedSpacing: true,
-        nodeSpacing: 2.0, // Much more spacing between nodes
+        nodeSpacing: nodeSpacing, // Much more spacing between nodes
       });
     } else {
       // Cluster mode - standard balanced layout
       return layoutDagre(filteredNodes, edges, layoutDir, sizeVariant, {
         clusterSpacing: true,
-        nodeSpacing: 1.0, // Standard spacing
+        nodeSpacing: nodeSpacing, // Standard spacing
       });
     }
   }, [
@@ -317,6 +344,7 @@ export const DependencyGraph: React.FC<DependencyGraphProps> = ({
     layoutDir,
     viewLevel,
     getSizeVariant,
+    getLayoutSpacing,
   ]);
 
   // ENHANCED: Add mode change feedback with HUD toast
@@ -356,22 +384,22 @@ export const DependencyGraph: React.FC<DependencyGraphProps> = ({
         switch (level) {
           case "overview":
             // Much more zoomed out for true overview
-            targetZoom = MAP_CONSTANTS.ZOOM.LEVELS.OVERVIEW * 0.6; // 40% more zoomed out
-            fitViewPadding = 0.2; // More padding for overview
+            targetZoom = MAP_CONSTANTS.ZOOM.LEVELS.OVERVIEW * 0.5; // 50% more zoomed out
+            fitViewPadding = 0.25; // More padding for overview
             break;
           case "cluster":
             // Standard zoom for balanced work
             targetZoom = MAP_CONSTANTS.ZOOM.LEVELS.CLUSTER;
-            fitViewPadding = 0.1; // Standard padding
+            fitViewPadding = 0.15; // Standard padding
             break;
           case "detail":
             // Much more zoomed in for detailed examination
-            targetZoom = MAP_CONSTANTS.ZOOM.LEVELS.DETAIL * 1.5; // 50% more zoomed in
-            fitViewPadding = 0.05; // Minimal padding for detail view
+            targetZoom = MAP_CONSTANTS.ZOOM.LEVELS.DETAIL * 1.8; // 80% more zoomed in
+            fitViewPadding = 0.03; // Minimal padding for detail view
             break;
           default:
             targetZoom = MAP_CONSTANTS.ZOOM.LEVELS.CLUSTER;
-            fitViewPadding = 0.1;
+            fitViewPadding = 0.15;
         }
 
         // Apply zoom first, then fit view with appropriate padding
@@ -379,14 +407,18 @@ export const DependencyGraph: React.FC<DependencyGraphProps> = ({
 
         // Delay fit view to allow zoom to complete
         setTimeout(() => {
-          fitView({ padding: fitViewPadding, duration: 400 });
+          fitView({
+            padding: fitViewPadding,
+            duration: 600,
+            includeHiddenNodes: false,
+          });
 
           // Reset zooming flag after operation completes
           setTimeout(() => {
             setIsZooming(false);
-          }, 500);
-        }, 200);
-      }, 50);
+          }, 700);
+        }, 300);
+      }, 100);
     },
     [fitView, zoomTo, isZooming]
   );
@@ -637,11 +669,37 @@ export const DependencyGraph: React.FC<DependencyGraphProps> = ({
     setHoveredCluster(clusterId);
   }, []);
 
+  // ENHANCED: Handle cluster click with zoom and centering
   const handleClusterClick = useCallback(
     (clusterId: string) => {
-      setFocusedCluster(focusedCluster === clusterId ? null : clusterId);
+      if (isUserInteractingRef.current) return;
+
+      // Find all nodes in the clicked cluster
+      const clusterNodes = filteredNodes.filter(
+        (node) => node.data.cluster === clusterId
+      );
+
+      if (clusterNodes.length > 0) {
+        // Fit view to the cluster with appropriate padding
+        const padding =
+          viewLevel === "detail" ? 0.05 : viewLevel === "overview" ? 0.2 : 0.1;
+
+        fitView({
+          nodes: clusterNodes,
+          padding,
+          duration: 600,
+          includeHiddenNodes: false,
+        });
+
+        // Show cluster selection feedback
+        console.log(
+          `Selected cluster: ${clusterId} with ${clusterNodes.length} nodes`
+        );
+
+        // TODO: Add cluster selection highlight and side panel details
+      }
     },
-    [focusedCluster]
+    [filteredNodes, viewLevel, fitView]
   );
 
   // Auto-fit view when nodes change - FIXED: Only when not zooming
@@ -663,11 +721,12 @@ export const DependencyGraph: React.FC<DependencyGraphProps> = ({
   }, []);
 
   return (
-    <div className="absolute inset-0">
+    <div className="relative h-full w-full min-w-0 overflow-hidden">
       {/* Main Map Container - Full Screen */}
       <ReactFlow
         nodes={rfNodes}
         edges={rfEdges}
+        className="!w-full !h-full"
         nodeTypes={nodeTypes}
         defaultEdgeOptions={defaultEdgeOptions}
         fitView
@@ -686,13 +745,36 @@ export const DependencyGraph: React.FC<DependencyGraphProps> = ({
             isUserInteractingRef.current = false;
           }, 150);
         }}
+        // Center camera on node click with enhanced behavior
         onNodeClick={(e, node) => {
+          // Prevent event bubbling
+          e.preventDefault();
+
+          // Get node data for enhanced selection
+          const nodeData = node.data;
+          const isOnGoalPath = nodesOnGoalPath.has(node.id);
+
+          // Enhanced fit view with different padding based on view level
+          const padding =
+            viewLevel === "detail"
+              ? 0.03
+              : viewLevel === "overview"
+                ? 0.25
+                : 0.15;
+
           fitView({
             nodes: [{ id: node.id }],
-            padding: viewLevel === "detail" ? 0.05 : 0.15,
-            duration: 400,
+            padding,
+            duration: 600,
             includeHiddenNodes: false,
           });
+
+          // Show selection feedback
+          console.log(
+            `Selected node: ${nodeData.topic.label} (${nodeData.topic.cluster})`
+          );
+
+          // TODO: Add visual selection highlight and side panel details
         }}
       >
         {/* Enhanced MiniMap with cluster colors */}
@@ -749,13 +831,15 @@ export const DependencyGraph: React.FC<DependencyGraphProps> = ({
         />
 
         {/* FIXED: Cluster Visualization Layer - Ensure proper rendering */}
-        {/* Cluster overlays should live in a layer that follows the viewport transform */}
+        {/* Cluster overlays should follow the RF viewport but NOT affect layout size */}
         <div
           className="absolute top-0 left-0 pointer-events-none"
           style={{
+            width: "100%",
+            height: "100%",
             transform: `translate(${tx}px, ${ty}px) scale(${k})`,
             transformOrigin: "0 0",
-            zIndex: 0, // below nodes, above background
+            zIndex: 0,
           }}
         >
           <ClusterVisualization

@@ -248,9 +248,10 @@ function AILearningGraphFlow() {
   };
 
   return (
-    <div className="h-full flex flex-col">
+    <div className="h-full min-w-0 flex flex-col overflow-hidden">
       {/* Horizontal Navigation Bar with All Panels */}
-      <div className="bg-white border-b border-gray-200 flex-shrink-0">
+      <div className="bg-white border-b border-gray-200 flex-shrink-0 overflow-x-auto">
+        {/* Keep the bar scrollable if needed, but the map below must not expand the page */}
         <div className="flex items-center gap-6 p-3 min-w-max overflow-x-auto">
           {/* Progress Panel - Compact Horizontal */}
           <div className="flex items-center gap-3 px-3 py-2 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg border border-blue-200">
@@ -536,14 +537,7 @@ function AILearningGraphFlow() {
       </div>
 
       {/* Main Content Area - Full Height and Width */}
-      <div
-        className="flex-1 relative bg-gray-50"
-        style={{
-          border:
-            process.env.NODE_ENV === "development" ? "2px solid red" : "none",
-          minHeight: "400px", // Ensure minimum height
-        }}
-      >
+      <div className="flex-1 min-h-0 min-w-0 overflow-hidden">
         {view === "matrix" ? (
           <DependencyMatrix nodes={filteredNodes} topicsById={topicsById} />
         ) : (

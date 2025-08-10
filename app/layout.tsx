@@ -12,7 +12,8 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body className="flex h-dvh flex-col bg-neutral-50 text-neutral-900">
+      {/* Lock the app to the viewport and prevent horizontal scroll bleed */}
+      <body className="flex h-dvh w-dvw overflow-hidden flex-col bg-neutral-50 text-neutral-900">
         {children}
       </body>
     </html>

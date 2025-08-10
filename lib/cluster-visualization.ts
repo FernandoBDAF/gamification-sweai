@@ -158,20 +158,25 @@ export function generateConvexHullPath(
     width: number;
     height: number;
   }>,
-  smoothing: number = CLUSTER_VIZ_CONSTANTS.CONVEX_HULL.CURVE_SMOOTHING
+  smoothing: number = CLUSTER_VIZ_CONSTANTS.CONVEX_HULL.CURVE_SMOOTHING,
+  zoomLevel: number = 1
 ): string {
   if (nodes.length === 0) return "";
   if (nodes.length === 1) {
     const node = nodes[0];
     const cx = node.x + node.width / 2;
     const cy = node.y + node.height / 2;
-    const r = Math.max(node.width, node.height) / 2 + 20;
+    // Dynamic padding based on zoom level
+    const basePadding = CLUSTER_VIZ_CONSTANTS.CONVEX_HULL.PADDING;
+    const dynamicPadding =
+      basePadding * Math.max(0.5, Math.min(2.0, zoomLevel));
+    const r = Math.max(node.width, node.height) / 2 + dynamicPadding;
     return `M ${cx - r} ${cy} A ${r} ${r} 0 1 1 ${
       cx + r
     } ${cy} A ${r} ${r} 0 1 1 ${cx - r} ${cy} Z`;
   }
 
-  // Get node centers with padding
+  // Get node centers with dynamic padding based on zoom
   const points = nodes.map((node) => ({
     x: node.x + node.width / 2,
     y: node.y + node.height / 2,
@@ -180,8 +185,10 @@ export function generateConvexHullPath(
   // Calculate convex hull using Graham scan algorithm
   const hull = convexHull(points);
 
-  // Add padding to hull points
-  const padding = CLUSTER_VIZ_CONSTANTS.CONVEX_HULL.PADDING;
+  // Add dynamic padding to hull points based on zoom level
+  const basePadding = CLUSTER_VIZ_CONSTANTS.CONVEX_HULL.PADDING;
+  const dynamicPadding = basePadding * Math.max(0.5, Math.min(2.0, zoomLevel));
+
   const centroid = hull.reduce(
     (acc, p) => ({ x: acc.x + p.x, y: acc.y + p.y }),
     { x: 0, y: 0 }
@@ -193,14 +200,14 @@ export function generateConvexHullPath(
     const dx = point.x - centroid.x;
     const dy = point.y - centroid.y;
     const distance = Math.sqrt(dx * dx + dy * dy);
-    const factor = (distance + padding) / distance;
+    const factor = (distance + dynamicPadding) / distance;
     return {
       x: centroid.x + dx * factor,
       y: centroid.y + dy * factor,
     };
   });
 
-  // Generate smooth curved path with exaggerated curves
+  // Generate smooth curved path with enhanced smoothing
   return generateSmoothPath(paddedHull, smoothing);
 }
 
@@ -259,9 +266,14 @@ function generateSmoothPath(
   points: Array<{ x: number; y: number }>,
   smoothing: number
 ): string {
-  if (points.length < 3) return "";
+  if (points.length === 0) return "";
+  if (points.length === 1) return `M ${points[0].x} ${points[0].y}`;
+  if (points.length === 2) {
+    return `M ${points[0].x} ${points[0].y} L ${points[1].x} ${points[1].y}`;
+  }
 
-  let path = `M ${points[0].x} ${points[0].y}`;
+  // Enhanced smoothing with better bezier curve control
+  const path = [`M ${points[0].x} ${points[0].y}`];
 
   for (let i = 0; i < points.length; i++) {
     const current = points[i];
@@ -269,14 +281,38 @@ function generateSmoothPath(
     const prev = points[(i - 1 + points.length) % points.length];
 
     // Calculate control points for smooth curves
-    const cp1x = current.x + (next.x - prev.x) * smoothing;
-    const cp1y = current.y + (next.y - prev.y) * smoothing;
+    const dx1 = current.x - prev.x;
+    const dy1 = current.y - prev.y;
+    const dx2 = next.x - current.x;
+    const dy2 = next.y - current.y;
 
-    path += ` Q ${cp1x} ${cp1y} ${next.x} ${next.y}`;
+    // Normalize vectors
+    const len1 = Math.sqrt(dx1 * dx1 + dy1 * dy1);
+    const len2 = Math.sqrt(dx2 * dx2 + dy2 * dy2);
+
+    if (len1 > 0 && len2 > 0) {
+      // Create smooth control points
+      const controlDist1 = len1 * smoothing * 0.5;
+      const controlDist2 = len2 * smoothing * 0.5;
+
+      const cp1x = current.x - (dx1 / len1) * controlDist1;
+      const cp1y = current.y - (dy1 / len1) * controlDist1;
+      const cp2x = current.x + (dx2 / len2) * controlDist2;
+      const cp2y = current.y + (dy2 / len2) * controlDist2;
+
+      path.push(
+        `C ${cp1x.toFixed(2)} ${cp1y.toFixed(2)}, ${cp2x.toFixed(
+          2
+        )} ${cp2y.toFixed(2)}, ${next.x} ${next.y}`
+      );
+    } else {
+      // Fallback to line if vectors are too small
+      path.push(`L ${next.x} ${next.y}`);
+    }
   }
 
-  path += " Z";
-  return path;
+  path.push("Z"); // Close the path
+  return path.join(" ");
 }
 
 // Determine optimal label position based on cluster bounds and zoom level
