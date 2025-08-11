@@ -1,96 +1,43 @@
-# Knowledge Mapping Platform — North Star Product Blueprint
+# Knowledge Mapping Platform — Developer Entry Point
 
-> **Vision:** A desktop-first, content-agnostic platform for visualizing knowledge paths.  
-> Users progress through **nodes** (atomic skills) arranged in **clusters** (topics) within **panels** (domains).  
-> The platform emphasizes **clear dependency paths**, **progress visibility**, and **calm, readable UI**.
+This README is the entry point for LLMs and engineers. It summarizes the hard constraints and points to the authoritative specs.
 
----
+## Quick Links
 
-## 1. Core Concepts
+- North Star: `NorthStarProductBlueprint.md`
+- Context & constraints: `CONTEXT.md`
+- Design spec (components/behaviors): `DESIGN.md`
+- Technical architecture & module responsibilities: `TECHNICAL.md`
+- Execution Playbook (DoD, QA, prompts): `EXECUTION_PLAYBOOK.md`
+- Progress & status: `PROGRESS.md`
+- Library scaffold & migration: `LibraryScaffolding.md`
 
-### Node
+## Non‑negotiables (MVP)
 
-- **Definition:** Atomic unit of knowledge.
-- **Fields:** `id`, `title`, `description`, `deps[]`, `links[]`, `progress{pct,done,reviewed}`, `tags[]`, `clusterId`.
-- **Display:**
-  - Fixed size.
-  - Always show title (wrap text).
-  - Always show % progress (no hover delay).
-  - Inactive = lighter shade of active color (e.g., `blue-200` vs `blue-700`).
-- **Interaction:**
-  - Single click → select only (no auto-center).
-  - Double click → open detail panel (future-proof).
-  - Hover → instant quick info tooltip.
-  - Right click → extra actions menu.
-- **Dependencies:**
-  - Always show incoming (prerequisites) and outgoing (dependents) arrows.
-  - Direction: **top-to-bottom** within clusters, **left-to-right** between clusters.
-  - Show edges for locked nodes.
-  - Unlock when prerequisites reach a % threshold.
+- Desktop‑first; no mobile
+- Zoom disabled; free panning; no auto‑center on click
+- Vertical paths in clusters; horizontal between clusters
+- Directional edges always visible (even if locked)
+- Node progress buckets (0, 25, 50, 75, 100); unlock dependents at ≥75%
+- Cluster unlock at ≥75% of prerequisite clusters complete
+- Detail panel opens on double‑click; Esc closes; clicking a dependency selects it
+- UI logic in components; all business logic in `/lib` (pure & tested)
 
-### Cluster
+## LLM Guidance
 
-- **Definition:** Group of related nodes (topic).
-- **Fields:** `id`, `title`, `description`, `order`, `prereqClusters[]`, `color`, `panelId`.
-- **Display:**
-  - Rendered as vertical columns.
-  - Show % completion in header.
-  - Contain only their own nodes (no overlaps).
-- **Rules:**
-  - Cluster selection removed; instead, filter nodes/clusters by status (active/completed/etc).
-  - Clusters can have dependency rules between them.
+- Make pure functions under `/lib` with unit tests first. Components consume pure outputs via props.
+- Prefer incremental diffs touching only relevant modules. Keep imports aligned to the new scaffold (`lib/{build,data,layout,state,ui,utils}`) or `lib/compat.ts` during migration.
+- Never enable zoom; preserve pan and selection behavior.
+- After changes: run tests (Vitest) and ensure app build is green.
 
-### Panel
+## Current Gaps (to prioritize)
 
-- **Definition:** Domain or field containing clusters.
-- **Fields:** `id`, `title`, `description`, `clusters[]`.
-- **Rules:**
-  - Panels are generic — not tied to a single subject.
-  - Ability to switch panels is a future feature.
+- Migrate remaining imports to new `/lib` scaffold; then remove `lib/compat.ts`.
+- Extract RF node building to `lib/build/build-rf-nodes.ts`.
+- Introduce `/lib/state/store.ts` and move global UI state there incrementally.
+- Add `/dev/ui` (optional) to snapshot key components with mock data.
 
----
+## How to propose changes
 
-## 2. Path-First Layout
-
-- **Vertical path inside clusters** (top→bottom).
-- **Horizontal path between clusters** (left→right).
-- Nodes at the same dependency depth are **horizontally aligned**.
-- Paths remain visible even when nodes are locked.
-- Clear visual separation between:
-  - **Path view** (graph with dependencies)
-  - **Content view** (node detail panel)
-
----
-
-## 3. Navigation & Map Behavior
-
-- **Desktop-first** (mobile postponed).
-- Zoom disabled; no scroll-wheel or pinch zoom.
-- Panning allowed only horizontally and vertically (no diagonal drift).
-- Scroll moves vertically within a cluster; horizontal scroll or arrows move across clusters.
-- Stable layout — no jitter or re-flow on resize.
-
----
-
-## 4. Gamification & Progress
-
-- **Visual Progress:**
-  - Nodes brighten as progress increases.
-  - Completed paths appear more vibrant.
-  - Color scaling uses a lightened→base interpolation (`progressToColor`) with approximate AA contrast.
-- **Unlock Logic:**
-  - Nodes unlock when prerequisites are completed above a % threshold.
-  - Clusters unlock when prerequisite clusters meet completion %.
-- **Achievements:**
-  - (Optional) Badges or subtle animations on completion — post-MVP.
-
----
-
-## 5. UI & UX Priorities
-
-- **Top Nav:**
-  - Compact; no overflow at 1280px.
-  - Group non-essentials into a “More” menu.
-  - Show only essential view/layout/filter controls.
-- **Status Filters:**
-  - Active, Locked
+- Use the diff-first prompt from `EXECUTION_PLAYBOOK.md`.
+- Reference exact module paths; include brief bullets on any new props/utilities.

@@ -116,6 +116,9 @@ Use this as the single source of truth when handing work to any LLM/dev/designer
   - **Vertical lane** with soft guide lines to align nodes at each **dependency level** (same depth = same horizontal line).
   - Internal scroll allowed **only if** the column exceeds viewport height; otherwise full page scroll is vertical.
   - **No free-form dragging**; nodes are positioned by layout engine.
+- **Presentation (canonical)**:
+  - Prefer translucent **column container overlays** with a label pill showing cluster name and %.
+  - Traditional DOM headers are optional and should not disrupt the path layout.
 
 ### D) Node Card (N\*)
 
@@ -178,10 +181,10 @@ Use this as the single source of truth when handing work to any LLM/dev/designer
 
 - **Desktop‑first**; no mobile layout in MVP.
 - **No zoom** (wheel/pinch disabled).
-- **Panning**: horizontal (clusters) and vertical (long columns).
+- **Panning**: free pan (both axes). Optional axis‑snapping on modifier (e.g., Shift).
 - **Auto-centering**:
   - Clicking a **cluster header** centers that column.
-  - Clicking a **node** recenters **slightly** to keep context but does not hard-snap.
+  - Clicking a **node** does not auto‑center.
 - **Dependency Depth Alignment**: within each cluster, nodes at the same depth share a horizontal guide line.
 
 ---

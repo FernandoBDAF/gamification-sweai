@@ -1,10 +1,12 @@
 # Project Technical Documentation
 
 ## Overview
+
 This project is a **desktop-first, Civilization-inspired knowledge map platform**.  
 It visualizes **nodes** (atomic knowledge units) organized into **clusters** (topic groups), which together form a **panel** (domain).
 
 The **North Star vision**:
+
 - **Vertical paths** inside clusters
 - **Horizontal paths** between clusters
 - Gamification through **progress tracking** and **unlock mechanics**
@@ -16,6 +18,7 @@ The **North Star vision**:
 ## 1. Core Entities
 
 ### Node
+
 - Fixed size for visual consistency
 - Always shows progress percentage
 - Displays title wrapped, never truncated
@@ -23,12 +26,14 @@ The **North Star vision**:
 - Unlocks when dependencies reach completion % threshold
 
 ### Cluster
+
 - Groups related nodes vertically
 - Shows % completion
 - May have dependencies on other clusters (horizontal path)
 - Filterable by status (active, completed, locked)
 
 ### Panel
+
 - Container for multiple clusters
 - Domain-agnostic (SWE AI is just one example)
 - Can switch panels in the future
@@ -38,6 +43,7 @@ The **North Star vision**:
 ## 2. Architecture Overview
 
 ### Folder Structure (Target State)
+
 /app/ # Pages & routes
 /components/ # Dumb UI components (no business logic)
 /map/
@@ -53,12 +59,12 @@ The **North Star vision**:
 /tests/ # Unit tests for all /lib modules
 /public/ # Design assets, reference images
 
-
 ---
 
 ## 3. Module Responsibilities
 
 ### `/lib/data`
+
 - **graph-types.ts**  
   Central TypeScript interfaces (`TopicNode`, `Cluster`, `Edge`, etc.)
 - **graph-selectors.ts**  
@@ -69,24 +75,28 @@ The **North Star vision**:
   Functions to get dependencies, dependents, and subgraphs
 
 ### `/lib/layout`
+
 - **layout-dagre.ts**  
   Wrapper for dagre layout with consistent spacing & direction rules
 - **layout-cluster.ts**  
   Cluster-specific layouts (focus mode, vertical alignment)
 
 ### `/lib/overlays`
+
 - **cluster-geometry.ts**  
   Hull/path math for cluster boundaries
 - **cluster-visual-css.ts**  
   Map cluster state to fill/opacity/stroke CSS
 
 ### `/lib/build`
+
 - **build-edges.ts**  
   Transform domain nodes → styled edges for ReactFlow
 - **build-rf-nodes.ts**  
   Transform domain nodes → styled RF nodes with position/status
 
 ### `/lib/state`
+
 - **store.ts**  
   Global app state: view, filters, selection, goal path
 
@@ -95,12 +105,14 @@ The **North Star vision**:
 ## 4. Development Methodology
 
 ### Principles
+
 - **Pure logic in `/lib`** — all heavy computation is isolated and testable
 - **UI in `/components`** — only renders prepared data
 - **One PR = One Module** — small, reviewable, testable changes
 - **Diff-first prompting** for LLMs to avoid context loss
 
 ### Steps for a New Feature
+
 1. Write or update **pure functions** in `/lib` with unit tests
 2. Expose new functionality to `/components` via props
 3. Adjust UI without touching business logic
@@ -131,21 +143,22 @@ The **North Star vision**:
 
 ## 6. Gamification Rules
 
-- Nodes:  
-  - Active: dark color (e.g., `blue-700`)  
+- Nodes:
+  - Active: dark color (e.g., `blue-700`)
   - Inactive: light color (`blue-200`)
   - Completed: marked with progress = 100%
-- Paths:  
-  - Unlocked → colored edges  
+- Paths:
+  - Unlocked → colored edges
   - Locked → muted edges
-- Clusters:  
+- Clusters:
   - Unlock after prerequisite clusters reach % threshold
-- Achievements (future):  
+- Achievements (future):
   - Badges for completing nodes/clusters
 
 ---
 
 ## 7. Design References
+
 - **Civ VI UI style**: clean, crisp, parchment accents for context panels
 - **Cluster columns**: visually separated vertical strips
 - **Progress emphasis**: number-driven, subtle animations
@@ -167,6 +180,7 @@ The **North Star vision**:
 ---
 
 ## 9. Backlog (Out of Scope for MVP)
+
 - Mobile support
 - Alternate cluster styles
 - Alternate layouts (Tree, Force-directed)
@@ -178,12 +192,51 @@ The **North Star vision**:
 ---
 
 ## 10. How to Work With an LLM
+
 When prompting an LLM to implement features:
+
 1. Always provide **this documentation** as context
 2. Reference **exact module paths**
 3. Ask for **diffs only** for the relevant files
 4. Run tests after applying changes
 5. Avoid prompts that require large-scale UI + logic changes in one step
+
+---
+
+## Storybook (Component QA)
+
+- Install & run
+  - yarn install
+  - yarn storybook (dev server)
+  - yarn build-storybook (static build)
+- What the static build is for
+  - Produces a self-contained `storybook-static/` site you can host (Vercel/Netlify/S3) for async reviews and visual QA without running a server.
+  - Useful for PR previews, stakeholder demos, and design sign-off. Artifacts are deterministic and versioned per commit.
+  - Does not require Next.js to run; it’s pure static assets for the Storybook UI and your component stories.
+- When to use which
+  - Dev server (`yarn storybook`): fast local iteration with HMR.
+  - Static build (`yarn build-storybook`): publishing, sharing, CI artifacts, regression baselines.
+- Configuration (why and how)
+  - Framework: `@storybook/nextjs` to match our Next.js app runtime and routing expectations.
+  - Builder/runtime: Webpack 5 (default), SWC compiler for faster TS/JS transpilation.
+  - Docs: MDX3 enabled; `docs.autodocs: "tag"` for auto-generated docs when desired.
+  - Addons: `@storybook/addon-essentials` (Actions, Controls, Docs, Viewport, etc.) and `@storybook/addon-interactions` for interaction testing.
+  - Global styles: `.storybook/preview.ts` imports `app/globals.css` so Tailwind classes and design tokens apply in stories.
+  - Layout: default `layout: "centered"` for easier snapshotting; override per-story if needed.
+  - Story discovery: `components/**/*.stories.@(ts|tsx)` to colocate stories with components.
+- Writing stories
+  - Place `*.stories.tsx` next to the component (e.g., `components/graph/CardNode.stories.tsx`).
+  - Keep stories presentational; use `argTypes` actions for callbacks to avoid side effects.
+  - Provide minimal mock data; avoid importing app state or heavy builders inside stories.
+- Requirement
+  - Every public component under `components/` must have at least one Storybook story (default state).
+  - Key targets: `TopNav`, `DetailPanel`, `CardNode`, `VisualLegend`.
+- CI/publishing tips
+  - Add a CI job to run `yarn build-storybook` and upload `storybook-static/` as an artifact or deploy it.
+  - For Vercel: configure a project to deploy the `storybook-static/` directory as a static site for PR previews.
+- Notes / known warnings
+  - Large bundle size warnings in static builds are acceptable for internal QA; optimize later if needed.
+  - If you see `@emotion/is-prop-valid` warnings from `framer-motion`, they are benign in our usage.
 
 ---
 
