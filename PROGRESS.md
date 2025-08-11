@@ -73,9 +73,11 @@ Follow-up execution prompt tasks status:
 - [x] Adopt `buildRFNodes` in the graph. RF node construction now via builder; callbacks injected.
 - [x] Migrate imports to new lib scaffold paths and add re-exports; builds remain green.
 - [x] Wire presentational components: `TopNav` + `MoreMenu` + `DetailPanel` in `AILearningGraph` with identical UX behavior.
+- [x] Extract remaining logic into `lib/data`: added `lib/data/paths.ts` with `findPathBFS` and `computePredecessorSet` + tests.
 
 Acceptance notes (this iteration):
 
 - Replaced inline top bar with `TopNav` and surfaced `MoreMenu` using `lib/data/io`. JSON import updates node list; export downloads panel JSON.
 - Replaced right-side panel markup with `DetailPanel` passing required props; close button preserved; selection wiring intact.
+- Centralized BFS helpers in `lib/data/paths.ts` with unit tests; all tests continue to pass.
 - All builds/tests/storybook pass after import migration and overlay constant fixes.
