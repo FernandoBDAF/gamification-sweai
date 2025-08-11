@@ -46,6 +46,7 @@ import {
 } from "@/lib/data/graph-progress";
 import { buildEdges as buildStyledEdges } from "@/lib/build/build-edges";
 import { buildRFNodes } from "@/lib/build/build-rf-nodes";
+import { GraphViewport } from "./GraphViewport";
 
 interface DependencyGraphProps {
   nodes: TopicNode[];
@@ -815,31 +816,16 @@ export const DependencyGraph: React.FC<DependencyGraphProps> = ({
 
   return (
     <div className="relative h-full w-full min-w-0 overflow-hidden">
-      {/* Main Map Container - Full Screen */}
-      <ReactFlow
+      <GraphViewport
         nodes={rfNodes}
         edges={rfEdges}
-        className="!w-full !h-full"
         nodeTypes={nodeTypes}
         defaultEdgeOptions={defaultEdgeOptions}
-        fitView
-        fitViewOptions={{ padding: 0.1 }}
-        // Lock zoom completely
-        minZoom={1}
-        maxZoom={1}
-        zoomOnScroll={false}
-        zoomOnPinch={false}
-        zoomOnDoubleClick={false}
-        proOptions={{ hideAttribution: true }}
-        nodesDraggable={false}
-        nodesConnectable={false}
-        elementsSelectable={true}
         onNodeMouseEnter={handleNodeMouseEnter}
         onNodeMouseLeave={handleNodeMouseLeave}
         onPaneClick={() => setSelectedNode(null)}
         onMoveStart={handleMoveStart}
         onMoveEnd={handleMoveEnd}
-        // Selection only: no auto-center or fit
         onNodeClick={(e, node) => {
           e.preventDefault();
           setSelectedNode(selectedNodeId === node.id ? null : node.id);
@@ -849,58 +835,6 @@ export const DependencyGraph: React.FC<DependencyGraphProps> = ({
           if (onOpenPanel) onOpenPanel(node.id);
         }}
       >
-        {/* Enhanced MiniMap with cluster colors */}
-        <MiniMap
-          zoomable={false}
-          pannable={false}
-          position="bottom-right"
-          nodeColor={(node) => {
-            const nodeData = rfNodes.find((n) => n.id === node.id)?.data;
-            if (!nodeData) return "#94a3b8";
-            const status = nodeData.status;
-            if (status === "completed") return "#10b981";
-            if (status === "available") return "#3b82f6";
-            if (status === "locked") return "#6b7280";
-            return "#94a3b8";
-          }}
-          style={{
-            backgroundColor: "rgba(255, 255, 255, 0.9)",
-            border: "2px solid #e5e7eb",
-            borderRadius: "12px",
-            boxShadow: "0 4px 12px rgba(0, 0, 0, 0.1)",
-          }}
-        />
-
-        {/* Controls without zoom */}
-        <Controls
-          position="top-right"
-          showZoom={false}
-          showFitView={true}
-          showInteractive={false}
-          style={{
-            backgroundColor: "rgba(255, 255, 255, 0.9)",
-            border: "2px solid #e5e7eb",
-            borderRadius: "12px",
-            boxShadow: "0 4px 12px rgba(0, 0, 0, 0.1)",
-          }}
-        />
-
-        {/* Civilization-inspired background */}
-        <Background
-          gap={24}
-          size={1}
-          color="#e5e7eb"
-          style={{
-            backgroundColor: "#fafafa",
-            backgroundImage: `
-              radial-gradient(circle at 20% 50%, rgba(59, 130, 246, 0.03) 0%, transparent 50%),
-              radial-gradient(circle at 80% 20%, rgba(16, 185, 129, 0.03) 0%, transparent 50%),
-              radial-gradient(circle at 40% 80%, rgba(245, 158, 11, 0.03) 0%, transparent 50%)
-            `,
-          }}
-        />
-
-        {/* FIXED: Cluster Visualization Layer - Ensure proper rendering */}
         {clusterVisualizationStyle !== "none" && (
           <div
             className="absolute top-0 left-0 pointer-events-none"
@@ -923,7 +857,7 @@ export const DependencyGraph: React.FC<DependencyGraphProps> = ({
             />
           </div>
         )}
-      </ReactFlow>
+      </GraphViewport>
 
       {/* Visual Legend */}
       <VisualLegend

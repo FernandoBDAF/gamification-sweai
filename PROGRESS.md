@@ -27,7 +27,7 @@ This file is intentionally neutral to avoid biasing execution. The next engineer
 
 ## 3) Component Restructure
 
-- [ ] Split `components/graph/DependencyGraph.tsx` into `graph/GraphContainer.tsx` and `graph/GraphViewport.tsx`. (Files created; wiring pending minimal diff in a follow-up.)
+- [x] Split `components/graph/DependencyGraph.tsx` into `graph/GraphContainer.tsx` and `graph/GraphViewport.tsx`.
 - [x] Extract `panels/DetailPanel.tsx` (presentational; data via props). (Present and now wired.)
 - [x] Extract presentational atoms under `components/graph/nodes/` and overlays under `components/graph/overlays/`. (Overlay imports centralized; no heavy logic in components.)
 
@@ -78,5 +78,5 @@ Follow-up execution prompt tasks status:
 
 Acceptance notes (this iteration):
 
-- Created `GraphViewport` and `GraphContainer` (presentational and thin orchestration); will switch `DependencyGraph` to use them with minimal diffs next.
+- Wired `DependencyGraph` to use `GraphViewport` for the RF canvas while preserving overlays and legend as children. No UX changes.
 - All builds/tests/storybook remain green.
