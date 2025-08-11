@@ -12,6 +12,7 @@ import { TopicNode, TopicStatus } from "@/lib/types";
 import { clusterLabels } from "@/lib/constants";
 import { getClusterStyle } from "@/lib/map-constants";
 import { NodeProps } from "reactflow";
+import { progressToColor } from "@/lib/data/graph-progress";
 
 export type CardNodeData = {
   topic: TopicNode;
@@ -25,6 +26,7 @@ export type CardNodeData = {
   onSaveNote: (id: string, text: string) => void;
   onSetGoal: (id: string) => void;
   highlightType?: "primary" | "dependency" | "dependent" | null;
+  progressPct?: number;
 };
 
 export const CardNode: React.FC<NodeProps<CardNodeData>> = ({
@@ -43,6 +45,7 @@ export const CardNode: React.FC<NodeProps<CardNodeData>> = ({
     onSaveNote,
     onSetGoal,
     highlightType,
+    progressPct = 0,
   } = data;
   const completed = status === "completed";
   const locked = status === "locked";
@@ -55,24 +58,24 @@ export const CardNode: React.FC<NodeProps<CardNodeData>> = ({
 
   const clusterStyle = getClusterStyle(topic.cluster);
 
-  // Status-based border colors as per requirements
+  // Status-based border colors as per requirements (lighter for inactive)
   const statusColors: Record<TopicStatus, string> = {
-    locked: "#d1d5db", // gray-300
-    available: "#60a5fa", // blue-400
-    completed: "#10b981", // green-500
+    locked: "#cbd5e1", // slate-300 (lighter)
+    available: "#93c5fd", // blue-300 (lighter than active)
+    completed: "#10b981", // emerald-500
   };
 
-  const statusClasses = `${locked ? "opacity-50 grayscale" : ""}`;
+  const statusClasses = `${locked ? "opacity-60" : completed ? "" : ""}`;
   const selectedRing = selected ? "ring-2 ring-yellow-400 shadow-lg" : "";
 
   // Subtle glow by highlight type
   const highlightGlow =
     highlightType === "primary"
-      ? "0 0 0 2px rgba(59,130,246,0.6), 0 4px 12px rgba(59,130,246,0.25)" // blue
+      ? "0 0 0 2px rgba(59,130,246,0.6), 0 4px 12px rgba(59,130,246,0.25)"
       : highlightType === "dependency"
-        ? "0 0 0 2px rgba(245,158,11,0.6), 0 4px 12px rgba(245,158,11,0.25)" // amber
+        ? "0 0 0 2px rgba(245,158,11,0.6), 0 4px 12px rgba(245,158,11,0.25)"
         : highlightType === "dependent"
-          ? "0 0 0 2px rgba(16,185,129,0.6), 0 4px 12px rgba(16,185,129,0.25)" // emerald
+          ? "0 0 0 2px rgba(16,185,129,0.6), 0 4px 12px rgba(16,185,129,0.25)"
           : undefined;
 
   return (
@@ -84,7 +87,7 @@ export const CardNode: React.FC<NodeProps<CardNodeData>> = ({
       }`}
       style={{
         background: "#ffffff",
-        borderColor: statusColors[status],
+        borderColor: progressToColor(statusColors[status], progressPct),
         color: clusterStyle.text,
         boxShadow: highlightGlow,
       }}
@@ -101,6 +104,13 @@ export const CardNode: React.FC<NodeProps<CardNodeData>> = ({
           {clusterLabels[topic.cluster] || topic.cluster}
         </span>
         <div className="ml-auto flex items-center gap-1 sm:gap-2">
+          <span
+            className={`badge text-[10px] ${
+              completed ? "bg-emerald-100" : "bg-gray-100"
+            }`}
+          >
+            {Math.round(progressPct)}%
+          </span>
           {completed && (
             <Trophy className="w-3 h-3 sm:w-4 sm:h-4 text-green-600" />
           )}

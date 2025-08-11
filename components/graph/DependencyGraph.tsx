@@ -17,7 +17,7 @@ import ReactFlow, {
   MarkerType,
 } from "reactflow";
 import { TopicNode, ViewMode } from "@/lib/types";
-import { ProgressState, computeStatus } from "@/lib/gamification";
+import { ProgressState, computeStatus } from "@/lib/data/graph-progress";
 import {
   layoutDagre,
   layoutClusterFocus,
@@ -40,6 +40,11 @@ import {
 } from "./ClusterVisualization";
 import { ClusterVisualizationStyle } from "@/lib/cluster-visualization";
 import { MAP_CONSTANTS } from "@/lib/map-constants";
+import {
+  clusterCompletion,
+  isClusterUnlocked,
+} from "@/lib/data/graph-progress";
+import { buildEdges as buildStyledEdges } from "@/lib/build/build-edges";
 
 interface DependencyGraphProps {
   nodes: TopicNode[];
@@ -58,6 +63,9 @@ interface DependencyGraphProps {
   viewLevel?: "overview" | "cluster" | "detail";
   clusterStyle?: string;
   layoutDirection?: "TB" | "LR";
+  selectedNodeId?: string | null;
+  onSelectNode?: (id: string | null) => void;
+  onOpenPanel?: (id: string) => void;
 }
 
 // Debounced fitView utility
@@ -84,8 +92,11 @@ export const DependencyGraph: React.FC<DependencyGraphProps> = ({
   viewLevel = "cluster",
   clusterStyle = "background",
   layoutDirection = "TB",
+  selectedNodeId: selectedNodeIdProp,
+  onSelectNode,
+  onOpenPanel,
 }) => {
-  const { fitView, zoomTo, getZoom } = useReactFlow();
+  const { fitView, zoomTo, getZoom, setViewport } = useReactFlow();
   const [focusedCluster, setFocusedCluster] = useState<string | null>(null);
   const [showLegend, setShowLegend] = useState(false);
   const [currentZoom, setCurrentZoom] = useState(1);
@@ -93,24 +104,66 @@ export const DependencyGraph: React.FC<DependencyGraphProps> = ({
   const [isZooming, setIsZooming] = useState(false);
   const zoomTimeoutRef = useRef<NodeJS.Timeout>();
   const [hoveredNodeId, setHoveredNodeId] = useState<string | null>(null);
-  const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
+  const [internalSelectedNodeId, setInternalSelectedNodeId] = useState<
+    string | null
+  >(null);
 
   // Track user interaction to suppress auto fitView during manual pan/zoom
   const isUserInteractingRef = useRef(false);
 
+  // Debounce hover to avoid flicker
+  const hoverTimerRef = useRef<NodeJS.Timeout>();
+  const handleNodeMouseEnter = useCallback((_: any, node: any) => {
+    if (hoverTimerRef.current) clearTimeout(hoverTimerRef.current);
+    hoverTimerRef.current = setTimeout(() => {
+      setHoveredNodeId(node.id);
+    }, 120);
+  }, []);
+  const handleNodeMouseLeave = useCallback(() => {
+    if (hoverTimerRef.current) clearTimeout(hoverTimerRef.current);
+    setHoveredNodeId(null);
+  }, []);
+
+  // Dev overlay toggle
+  const [devOpen, setDevOpen] = useState<boolean>(false);
+  useEffect(() => {
+    try {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get("dev") === "1") setDevOpen(true);
+    } catch {}
+  }, []);
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key.toLowerCase() === "d") setDevOpen((v) => !v);
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, []);
+
+  // Render counters
+  const renderCountsRef = useRef<{ nodes: number; edges: number }>({
+    nodes: 0,
+    edges: 0,
+  });
+
   // Get current viewport transform so overlays follow pan/zoom
   const [tx, ty, k] = useStore((s) => s.transform);
 
+  // Axis-constrained panning support
+  const handleMoveStart = useCallback(() => {
+    isUserInteractingRef.current = true;
+  }, []);
+  const handleMoveEnd = useCallback(() => {
+    setTimeout(() => {
+      isUserInteractingRef.current = false;
+    }, 150);
+  }, []);
+
   // Convert clusterStyle to proper ClusterVisualizationStyle
   const clusterVisualizationStyle: ClusterVisualizationStyle = useMemo(() => {
-    const styleMap: Record<string, ClusterVisualizationStyle> = {
-      none: "none",
-      background: "translucent-background",
-      hull: "convex-hull-polygon",
-      bubble: "blurred-bubble",
-      labels: "label-positioning",
-    };
-    return styleMap[clusterStyle] || "translucent-background";
+    // MVP: use a simple column-like translucent background for all options
+    if (clusterStyle === "none") return "none";
+    return "translucent-background";
   }, [clusterStyle]);
 
   // Convert layoutDirection to proper LayoutDirection
@@ -135,12 +188,48 @@ export const DependencyGraph: React.FC<DependencyGraphProps> = ({
 
   // Memoize statuses computation
   const statuses = useMemo(() => {
+    // Derive cluster prerequisites from cross-cluster dependencies
+    const allClusters = Array.from(new Set(nodes.map((n) => n.cluster)));
+    const prereqMap: Record<string, string[]> = {};
+    nodes.forEach((n) => {
+      (n.deps || []).forEach((depId) => {
+        const depNode = nodes.find((x) => x.id === depId);
+        if (depNode && depNode.cluster !== n.cluster) {
+          const set = new Set(prereqMap[n.cluster] || []);
+          set.add(depNode.cluster);
+          prereqMap[n.cluster] = Array.from(set);
+        }
+      });
+    });
+
+    // Build byCluster index and completion pct
+    const byCluster: Record<string, string[]> = {};
+    nodes.forEach((n) => {
+      (byCluster[n.cluster] ||= []).push(n.id);
+    });
+    const completionByCluster = clusterCompletion(
+      progress.completed,
+      byCluster
+    );
+    const unlockedClusters = new Set<string>(
+      allClusters.filter((cid) =>
+        isClusterUnlocked(
+          cid,
+          nodes.map((n) => ({ id: n.id, cluster: n.cluster, deps: n.deps })),
+          progress.completed,
+          100
+        )
+      )
+    );
+
     const statusMap: Record<string, any> = {};
     for (const node of nodes) {
       statusMap[node.id] = computeStatus(
         node.id,
         node.deps,
-        progress.completed
+        progress.completed,
+        1.0, // 100% deps threshold for MVP
+        !unlockedClusters.has(node.cluster)
       );
     }
     return statusMap;
@@ -185,6 +274,14 @@ export const DependencyGraph: React.FC<DependencyGraphProps> = ({
   }, [nodes, clusterFilter, clusterFilters, search, statuses, focusedCluster]);
 
   // Compute direct dependencies/dependents for active focus node (hovered or selected)
+  const selectedNodeId = selectedNodeIdProp ?? internalSelectedNodeId;
+  const setSelectedNode = useCallback(
+    (id: string | null) => {
+      if (onSelectNode) onSelectNode(id);
+      if (selectedNodeIdProp === undefined) setInternalSelectedNodeId(id);
+    },
+    [onSelectNode, selectedNodeIdProp]
+  );
   const activeNodeId = selectedNodeId || hoveredNodeId;
   const dependencyIds = useMemo(() => {
     if (!activeNodeId) return new Set<string>();
@@ -538,6 +635,7 @@ export const DependencyGraph: React.FC<DependencyGraphProps> = ({
 
   // Convert to ReactFlow format
   const rfNodes: Node<any>[] = useMemo(() => {
+    renderCountsRef.current.nodes++;
     return layoutedNodes.map((node) => {
       const status = statuses[node.id];
       const isOnGoalPath = nodesOnGoalPath.has(node.id);
@@ -547,6 +645,7 @@ export const DependencyGraph: React.FC<DependencyGraphProps> = ({
         else if (dependencyIds.has(node.id)) highlightType = "dependency";
         else if (dependentIds.has(node.id)) highlightType = "dependent";
       }
+      const progressPct = status === "completed" ? 100 : 0;
 
       return {
         id: node.id,
@@ -567,6 +666,7 @@ export const DependencyGraph: React.FC<DependencyGraphProps> = ({
           onSetGoal,
           onClusterFocus: setFocusedCluster,
           highlightType,
+          progressPct,
         },
       };
     });
@@ -589,109 +689,22 @@ export const DependencyGraph: React.FC<DependencyGraphProps> = ({
 
   // Convert edges to ReactFlow format with enhanced styling
   const rfEdges: Edge[] = useMemo(() => {
-    return layoutedEdges.map((edge) => {
-      const isOnGoalPath =
-        nodesOnGoalPath.has(edge.source) && nodesOnGoalPath.has(edge.target);
+    renderCountsRef.current.edges++;
+    const inputs = layoutedEdges.map((e) => ({
+      source: e.source,
+      target: e.target,
+    }));
+    const baseEdges = buildStyledEdges(
+      inputs,
+      statuses as any,
+      dependencyIds,
+      dependentIds,
+      activeNodeId || undefined
+    );
+    // Optionally dim by cluster focus/hover
+    return baseEdges.map((edge) => {
       const sourceNode = filteredNodes.find((n) => n.id === edge.source);
       const targetNode = filteredNodes.find((n) => n.id === edge.target);
-      const isCrossCluster =
-        sourceNode && targetNode && sourceNode.cluster !== targetNode.cluster;
-      const isCompleted =
-        statuses[edge.source] === "completed" &&
-        statuses[edge.target] === "completed";
-
-      // Base edge object
-      const baseEdge: Edge = {
-        id: `${edge.source}-${edge.target}`,
-        source: edge.source,
-        target: edge.target,
-        type: "smoothstep",
-        animated: false,
-        markerEnd: defaultEdgeOptions.markerEnd,
-        style: defaultEdgeOptions.style,
-      };
-
-      // Dependency/dependent highlighting relative to active node
-      if (activeNodeId) {
-        if (edge.target === activeNodeId && dependencyIds.has(edge.source)) {
-          baseEdge.style = {
-            ...baseEdge.style,
-            stroke: "#f59e0b",
-            strokeWidth: 3,
-            opacity: 0.95,
-            strokeDasharray: "6 4",
-          };
-          baseEdge.animated = true;
-          baseEdge.markerEnd = {
-            type: MarkerType.ArrowClosed,
-            width: 16,
-            height: 16,
-            color: "#f59e0b",
-          };
-        } else if (
-          edge.source === activeNodeId &&
-          dependentIds.has(edge.target)
-        ) {
-          baseEdge.style = {
-            ...baseEdge.style,
-            stroke: "#10b981",
-            strokeWidth: 3,
-            opacity: 0.95,
-            strokeDasharray: "6 4",
-          };
-          baseEdge.animated = true;
-          baseEdge.markerEnd = {
-            type: MarkerType.ArrowClosed,
-            width: 16,
-            height: 16,
-            color: "#10b981",
-          };
-        }
-      }
-
-      // Apply styling based on edge type
-      if (isOnGoalPath) {
-        baseEdge.animated = true;
-        baseEdge.style = {
-          stroke: "#eab308",
-          strokeWidth: 3,
-          opacity: 1,
-          filter: "drop-shadow(0 0 10px rgba(234, 179, 8, 0.5))",
-        };
-        baseEdge.markerEnd = {
-          type: MarkerType.ArrowClosed,
-          width: 18,
-          height: 18,
-          color: "#eab308",
-        };
-      } else if (isCrossCluster) {
-        baseEdge.style = {
-          stroke: "#6b7280",
-          strokeWidth: 1.5,
-          opacity: 0.3,
-          strokeDasharray: "5,5",
-        };
-        baseEdge.markerEnd = {
-          type: MarkerType.ArrowClosed,
-          width: 14,
-          height: 14,
-          color: "#6b7280",
-        };
-      } else if (isCompleted) {
-        baseEdge.style = {
-          stroke: "#10b981",
-          strokeWidth: 2.5,
-          opacity: 0.8,
-        };
-        baseEdge.markerEnd = {
-          type: MarkerType.ArrowClosed,
-          width: 16,
-          height: 16,
-          color: "#10b981",
-        };
-      }
-
-      // Apply cluster focus dimming
       if (
         focusedCluster &&
         (!sourceNode ||
@@ -699,13 +712,8 @@ export const DependencyGraph: React.FC<DependencyGraphProps> = ({
           (sourceNode.cluster !== focusedCluster &&
             targetNode.cluster !== focusedCluster))
       ) {
-        baseEdge.style = {
-          ...baseEdge.style,
-          opacity: 0.2,
-        };
+        edge.style = { ...(edge.style || {}), opacity: 0.2 } as any;
       }
-
-      // Apply cluster hover dimming
       if (
         hoveredCluster &&
         (!sourceNode ||
@@ -714,16 +722,15 @@ export const DependencyGraph: React.FC<DependencyGraphProps> = ({
             targetNode.cluster !== hoveredCluster))
       ) {
         const currentOpacity =
-          typeof baseEdge.style?.opacity === "number"
-            ? baseEdge.style.opacity
+          typeof edge.style?.opacity === "number"
+            ? (edge.style!.opacity as number)
             : 1;
-        baseEdge.style = {
-          ...baseEdge.style,
+        edge.style = {
+          ...(edge.style || {}),
           opacity: currentOpacity * 0.3,
-        };
+        } as any;
       }
-
-      return baseEdge;
+      return edge;
     });
   }, [
     layoutedEdges,
@@ -787,6 +794,7 @@ export const DependencyGraph: React.FC<DependencyGraphProps> = ({
       if (zoomTimeoutRef.current) {
         clearTimeout(zoomTimeoutRef.current);
       }
+      if (hoverTimerRef.current) clearTimeout(hoverTimerRef.current);
     };
   }, []);
 
@@ -801,63 +809,43 @@ export const DependencyGraph: React.FC<DependencyGraphProps> = ({
         defaultEdgeOptions={defaultEdgeOptions}
         fitView
         fitViewOptions={{ padding: 0.1 }}
-        minZoom={MAP_CONSTANTS.ZOOM.MIN}
-        maxZoom={MAP_CONSTANTS.ZOOM.MAX}
+        // Lock zoom completely
+        minZoom={1}
+        maxZoom={1}
+        zoomOnScroll={false}
+        zoomOnPinch={false}
+        zoomOnDoubleClick={false}
         proOptions={{ hideAttribution: true }}
-        nodesDraggable={false} // Disable dragging for consistent layout
-        nodesConnectable={false} // Disable connection creation
-        elementsSelectable={true} // Allow selection for better UX
-        onNodeMouseEnter={(_, node) => setHoveredNodeId(node.id)}
-        onNodeMouseLeave={() => setHoveredNodeId(null)}
-        onPaneClick={() => setSelectedNodeId(null)}
-        onMoveStart={() => {
-          isUserInteractingRef.current = true;
-        }}
-        onMoveEnd={() => {
-          setTimeout(() => {
-            isUserInteractingRef.current = false;
-          }, 150);
-        }}
-        // Center camera on node click with enhanced behavior
+        nodesDraggable={false}
+        nodesConnectable={false}
+        elementsSelectable={true}
+        onNodeMouseEnter={handleNodeMouseEnter}
+        onNodeMouseLeave={handleNodeMouseLeave}
+        onPaneClick={() => setSelectedNode(null)}
+        onMoveStart={handleMoveStart}
+        onMoveEnd={handleMoveEnd}
+        // Selection only: no auto-center or fit
         onNodeClick={(e, node) => {
-          // Prevent event bubbling
           e.preventDefault();
-          setSelectedNodeId((prev) => (prev === node.id ? null : node.id));
-
-          // Get node data for enhanced selection
-          const nodeData = node.data;
-          const isOnGoalPath = nodesOnGoalPath.has(node.id);
-
-          // Fit to node with spec padding/duration
-          fitView({
-            nodes: [{ id: node.id }],
-            padding: viewLevel === "detail" ? 0.05 : 0.15,
-            duration: 400,
-            includeHiddenNodes: false,
-          });
-
-          // Show selection feedback
-          console.log(
-            `Selected node: ${nodeData.topic.label} (${nodeData.topic.cluster})`
-          );
-
-          // TODO: Add visual selection highlight and side panel details
+          setSelectedNode(selectedNodeId === node.id ? null : node.id);
+        }}
+        onNodeDoubleClick={(e, node) => {
+          e.preventDefault();
+          if (onOpenPanel) onOpenPanel(node.id);
         }}
       >
         {/* Enhanced MiniMap with cluster colors */}
         <MiniMap
-          zoomable
-          pannable
+          zoomable={false}
+          pannable={false}
           position="bottom-right"
           nodeColor={(node) => {
             const nodeData = rfNodes.find((n) => n.id === node.id)?.data;
-            if (!nodeData) return "#94a3b8"; // Default gray
-
+            if (!nodeData) return "#94a3b8";
             const status = nodeData.status;
-            if (status === "completed") return "#10b981"; // Green
-            if (status === "available") return "#3b82f6"; // Blue
-            if (status === "locked") return "#6b7280"; // Gray
-
+            if (status === "completed") return "#10b981";
+            if (status === "available") return "#3b82f6";
+            if (status === "locked") return "#6b7280";
             return "#94a3b8";
           }}
           style={{
@@ -868,10 +856,10 @@ export const DependencyGraph: React.FC<DependencyGraphProps> = ({
           }}
         />
 
-        {/* Enhanced Controls */}
+        {/* Controls without zoom */}
         <Controls
           position="top-right"
-          showZoom={true}
+          showZoom={false}
           showFitView={true}
           showInteractive={false}
           style={{
@@ -898,7 +886,6 @@ export const DependencyGraph: React.FC<DependencyGraphProps> = ({
         />
 
         {/* FIXED: Cluster Visualization Layer - Ensure proper rendering */}
-        {/* Cluster overlays should follow the RF viewport but NOT affect layout size */}
         {clusterVisualizationStyle !== "none" && (
           <div
             className="absolute top-0 left-0 pointer-events-none"
@@ -929,6 +916,26 @@ export const DependencyGraph: React.FC<DependencyGraphProps> = ({
         onToggle={() => setShowLegend(!showLegend)}
         compact={compact}
       />
+
+      {/* Dev Overlay */}
+      {devOpen && (
+        <div className="absolute bottom-4 left-4 z-40 bg-black/80 text-white rounded-lg p-3 text-xs shadow-lg">
+          <div className="font-semibold mb-1">Dev Overlay</div>
+          <div>selectedNodeId: {selectedNodeId || "none"}</div>
+          <div>dependencyIds: {Array.from(dependencyIds).length}</div>
+          <div>dependentIds: {Array.from(dependentIds).length}</div>
+          <div>
+            filters:{" "}
+            {clusterFilters && clusterFilters.length
+              ? `clusters:${clusterFilters.length}`
+              : "all clusters"}
+          </div>
+          <div>viewLevel: {viewLevel}</div>
+          <div>layout: {layoutDir}</div>
+          <div>renders.nodes: {renderCountsRef.current.nodes}</div>
+          <div>renders.edges: {renderCountsRef.current.edges}</div>
+        </div>
+      )}
 
       {/* ENHANCED: Mode Change HUD Toast */}
       {modeChangeToast && (

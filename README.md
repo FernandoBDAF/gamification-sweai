@@ -9,6 +9,7 @@
 ## 1. Core Concepts
 
 ### Node
+
 - **Definition:** Atomic unit of knowledge.
 - **Fields:** `id`, `title`, `description`, `deps[]`, `links[]`, `progress{pct,done,reviewed}`, `tags[]`, `clusterId`.
 - **Display:**
@@ -28,6 +29,7 @@
   - Unlock when prerequisites reach a % threshold.
 
 ### Cluster
+
 - **Definition:** Group of related nodes (topic).
 - **Fields:** `id`, `title`, `description`, `order`, `prereqClusters[]`, `color`, `panelId`.
 - **Display:**
@@ -39,6 +41,7 @@
   - Clusters can have dependency rules between them.
 
 ### Panel
+
 - **Definition:** Domain or field containing clusters.
 - **Fields:** `id`, `title`, `description`, `clusters[]`.
 - **Rules:**
@@ -74,6 +77,7 @@
 - **Visual Progress:**
   - Nodes brighten as progress increases.
   - Completed paths appear more vibrant.
+  - Color scaling uses a lightened→base interpolation (`progressToColor`) with approximate AA contrast.
 - **Unlock Logic:**
   - Nodes unlock when prerequisites are completed above a % threshold.
   - Clusters unlock when prerequisite clusters meet completion %.

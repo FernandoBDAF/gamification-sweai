@@ -14,7 +14,7 @@ import {
   awardXP,
   updateDailyStreak,
   clusterCompletion,
-} from "@/lib/gamification";
+} from "@/lib/data/graph-progress";
 import { TopicNode, GraphData, ViewMode } from "@/lib/types";
 
 // Components
@@ -34,6 +34,8 @@ import { Confetti, ResponsiveSidebar, usePanelControls } from "@/components/ui";
 function AILearningGraphFlow() {
   const data = graphData as GraphData;
   const [progress, setProgress] = useState<ProgressState>(initialProgress);
+  const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
+  const [focusNodeId, setFocusNodeId] = useState<string | null>(null);
   const [clusterFilter, setClusterFilter] = useState<string>("ALL");
   const [clusterFilters, setClusterFilters] = useState<string[]>([]);
   const [hideCompleted, setHideCompleted] = useState<boolean>(false);
@@ -84,6 +86,45 @@ function AILearningGraphFlow() {
   useEffect(() => setProgress((_) => updateDailyStreak(loadProgress())), []);
   useEffect(() => saveProgress(progress), [progress]);
 
+  // UI persistence (filters & view-level/layout)
+  const UI_STATE_KEY = "ai-learning-map:v1";
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(UI_STATE_KEY);
+      if (!raw) return;
+      const parsed = JSON.parse(raw);
+      if (parsed?.filters) {
+        if (typeof parsed.filters.hideCompleted === "boolean") {
+          setHideCompleted(parsed.filters.hideCompleted);
+        }
+        if (typeof parsed.filters.showOnlyUnlockable === "boolean") {
+          setShowOnlyUnlockable(parsed.filters.showOnlyUnlockable);
+        }
+      }
+      if (parsed?.view) {
+        if (parsed.view.viewLevel) setViewLevel(parsed.view.viewLevel);
+        if (parsed.view.layoutDirection)
+          setLayoutDirection(parsed.view.layoutDirection);
+        if (parsed.view.clusterStyle) setClusterStyle(parsed.view.clusterStyle);
+      }
+    } catch {}
+  }, []);
+  useEffect(() => {
+    try {
+      const payload = {
+        filters: { hideCompleted, showOnlyUnlockable },
+        view: { viewLevel, layoutDirection, clusterStyle },
+      };
+      localStorage.setItem(UI_STATE_KEY, JSON.stringify(payload));
+    } catch {}
+  }, [
+    hideCompleted,
+    showOnlyUnlockable,
+    viewLevel,
+    layoutDirection,
+    clusterStyle,
+  ]);
+
   // Keyboard shortcuts
   useEffect(() => {
     const handleKeyPress = (event: KeyboardEvent) => {
@@ -128,6 +169,7 @@ function AILearningGraphFlow() {
           event.preventDefault();
           setGoalId("");
           setSearch("");
+          setFocusNodeId(null);
           break;
       }
     };
@@ -142,6 +184,7 @@ function AILearningGraphFlow() {
     setHideCompleted,
     setGoalId,
     setSearch,
+    setFocusNodeId,
   ]);
 
   const topicsById = useMemo(
@@ -209,6 +252,15 @@ function AILearningGraphFlow() {
   const handleSetGoal = useCallback((id: string) => {
     setGoalId(id);
   }, []);
+
+  const selectedTopic = useMemo(
+    () => (selectedNodeId ? topicsById[selectedNodeId] : undefined),
+    [selectedNodeId, topicsById]
+  );
+  const focusedTopic = useMemo(
+    () => (focusNodeId ? topicsById[focusNodeId] : undefined),
+    [focusNodeId, topicsById]
+  );
 
   // Filter nodes for display (used by both graph and matrix views)
   const filteredNodes = useMemo(() => {
@@ -287,7 +339,7 @@ function AILearningGraphFlow() {
       {/* Sticky, compact top bar with wrapping */}
       <div className="bg-white border-b border-gray-200 flex-shrink-0 sticky top-0 z-30">
         <div className="flex flex-wrap items-center gap-3 px-3 py-2 min-w-0">
-          {/* Progress Panel - Compact Horizontal */}
+          {/* Progress Pill (compact) */}
           <div className="flex items-center gap-3 px-3 py-2 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg border border-blue-200">
             <div className="flex items-center gap-2">
               <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
@@ -306,10 +358,10 @@ function AILearningGraphFlow() {
             </div>
           </div>
 
-          {/* Search - Compact */}
+          {/* Search */}
           <div className="flex items-center gap-2">
             <input
-              className="w-48 px-2 py-1.5 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              className="w-56 px-2 py-1.5 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               placeholder="Search topics..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
@@ -318,14 +370,15 @@ function AILearningGraphFlow() {
               <button
                 onClick={() => setSearch("")}
                 className="text-gray-400 hover:text-gray-600"
+                title="Clear search"
               >
                 ✕
               </button>
             )}
           </div>
 
-          {/* Filters - Compact Toggles */}
-          <div className="flex items-center gap-2">
+          {/* Status Filters */}
+          <div className="flex items-center gap-3">
             <label className="flex items-center gap-2 text-sm">
               <input
                 type="checkbox"
@@ -346,169 +399,14 @@ function AILearningGraphFlow() {
             </label>
           </div>
 
-          {/* Cluster Filter - Popover Checklist */}
-          <div className="relative">
-            <button
-              className="px-2 py-1.5 text-sm border rounded-md bg-white hover:bg-gray-50"
-              onClick={() => setClusterMenuOpen((v) => !v)}
-              aria-expanded={clusterMenuOpen}
-            >
-              Clusters{" "}
-              {clusterFilters.length ? `(${clusterFilters.length})` : "(All)"}
-            </button>
-
-            {clusterMenuOpen && (
-              <div
-                className="absolute z-20 mt-2 w-64 rounded-md border bg-white shadow-lg p-2 max-h-72 overflow-auto"
-                onMouseLeave={() => setClusterMenuOpen(false)}
-              >
-                {/* All toggle */}
-                <label className="flex items-center gap-2 px-2 py-1 rounded hover:bg-gray-50 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={clusterFilters.length === 0}
-                    onChange={(e) => {
-                      if (e.target.checked) {
-                        setClusterFilters([]);
-                        setClusterFilter("ALL");
-                      }
-                    }}
-                  />
-                  <span className="text-sm font-medium">All Clusters</span>
-                </label>
-
-                <div className="my-1 h-px bg-gray-200" />
-
-                {/* Individual clusters */}
-                {allClusters.map((c) => {
-                  const checked =
-                    clusterFilters.length === 0
-                      ? true
-                      : clusterFilters.includes(c);
-                  return (
-                    <label
-                      key={c}
-                      className="flex items-center gap-2 px-2 py-1 rounded hover:bg-gray-50 cursor-pointer"
-                    >
-                      <input
-                        type="checkbox"
-                        checked={checked}
-                        onChange={(e) => {
-                          setClusterFilter("ALL");
-                          setClusterFilters((prev) => {
-                            const set = new Set(prev);
-                            if (e.target.checked) set.add(c);
-                            else set.delete(c);
-                            return Array.from(set);
-                          });
-                        }}
-                      />
-                      <span className="text-sm">{c}</span>
-                    </label>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-
-          {/* Grouped View/Level/Style Controls - compact with instant tips */}
-          <div className="flex items-center gap-1 px-2 py-1 bg-gray-50 border rounded-md flex-wrap">
-            {/* View */}
-            {[
-              { key: "tree", label: "Tree", icon: "🌲" },
-              { key: "cluster", label: "Cluster", icon: "🎯" },
-              { key: "matrix", label: "Matrix", icon: "📊" },
-            ].map((viewOption) => (
-              <button
-                key={viewOption.key}
-                onClick={() => setView(viewOption.key as ViewMode)}
-                className={`relative group px-2 py-1 text-xs rounded hover:bg-gray-100 ${
-                  view === viewOption.key
-                    ? "bg-blue-100 text-blue-800 border border-blue-200"
-                    : "text-gray-700"
-                }`}
-              >
-                <span className="md:hidden">{viewOption.icon}</span>
-                <span className="hidden md:inline-flex items-center gap-1">
-                  {viewOption.icon}
-                  <span>{viewOption.label}</span>
-                </span>
-                <Tip label={viewOption.label} />
-              </button>
-            ))}
-
-            <span className="w-px h-5 bg-gray-300 mx-1" />
-
-            {/* Level */}
-            {[
-              { key: "overview", label: "Overview", icon: "🌐" },
-              { key: "cluster", label: "Cluster", icon: "🎯" },
-              { key: "detail", label: "Detail", icon: "🔍" },
-            ].map((level) => (
-              <button
-                key={level.key}
-                onClick={() =>
-                  setViewLevel(level.key as "overview" | "cluster" | "detail")
-                }
-                className={`relative group px-2 py-1 text-xs rounded hover:bg-gray-100 ${
-                  viewLevel === level.key
-                    ? "bg-blue-100 text-blue-800 border border-blue-200"
-                    : "text-gray-700"
-                }`}
-              >
-                <span className="md:hidden">{level.icon}</span>
-                <span className="hidden md:inline-flex items-center gap-1">
-                  {level.icon}
-                  <span>{level.label}</span>
-                </span>
-                <Tip label={level.label} />
-              </button>
-            ))}
-
-            <span className="w-px h-5 bg-gray-300 mx-1" />
-
-            {/* Style */}
-            {[
-              { key: "none", label: "None", icon: "⭕" },
-              {
-                key: "background",
-                label: "Background",
-                icon: "⬜",
-                primary: true,
-              },
-              { key: "hull", label: "Hull", icon: "🔷" },
-              { key: "bubble", label: "Bubble", icon: "🫧" },
-              { key: "labels", label: "Labels", icon: "🏷️" },
-            ].map((style) => (
-              <button
-                key={style.key}
-                onClick={() => setClusterStyle(style.key)}
-                className={`relative group px-2 py-1 text-xs rounded hover:bg-gray-100 ${
-                  clusterStyle === style.key
-                    ? style.primary
-                      ? "bg-indigo-100 text-indigo-800 border border-indigo-200"
-                      : "bg-blue-100 text-blue-800 border border-blue-200"
-                    : "text-gray-700"
-                }`}
-              >
-                <span className="md:hidden">{style.icon}</span>
-                <span className="hidden md:inline-flex items-center gap-1">
-                  {style.icon}
-                  <span>{style.label}</span>
-                </span>
-                <Tip label={style.label} />
-              </button>
-            ))}
-          </div>
-
-          {/* More menu for rarely used actions */}
-          <div className="relative">
+          {/* More menu (import/export) */}
+          <div className="relative ml-auto">
             <button
               className="px-2 py-1.5 text-sm border rounded-md bg-white hover:bg-gray-50"
               onClick={() => setMoreOpen((v) => !v)}
               aria-expanded={moreOpen}
             >
-              + More
+              More
             </button>
             {moreOpen && (
               <div className="absolute right-0 mt-2 w-56 rounded-md border bg-white shadow-lg p-2 z-20">
@@ -537,53 +435,30 @@ function AILearningGraphFlow() {
         </div>
       </div>
 
-      {/* Active Filter Chips */}
+      {/* Active Status Chips Row */}
       <div className="px-3 py-1 bg-white/80 border-b border-gray-200 flex items-center gap-2 text-xs">
-        {clusterFilters.length > 0 && (
-          <>
-            {clusterFilters.map((c) => (
-              <span
-                key={c}
-                className="px-2 py-0.5 bg-gray-100 border rounded flex items-center gap-1"
-              >
-                <span className="hidden sm:inline">
-                  Cluster: {getClusterDisplayName(c)}
-                </span>
-                <span className="sm:hidden">Cluster</span>
-                <button
-                  className="text-gray-500 hover:text-gray-700"
-                  onClick={() =>
-                    setClusterFilters(clusterFilters.filter((x) => x !== c))
-                  }
-                >
-                  ×
-                </button>
-              </span>
-            ))}
-          </>
+        {hideCompleted && (
+          <span className="px-2 py-0.5 bg-gray-100 border rounded flex items-center gap-1">
+            <span>Hide completed</span>
+            <button
+              className="text-gray-500 hover:text-gray-700"
+              onClick={() => setHideCompleted(false)}
+            >
+              ×
+            </button>
+          </span>
         )}
-        <span className="px-2 py-0.5 bg-gray-100 border rounded flex items-center gap-1">
-          <span className="hidden sm:inline">Style: {clusterStyle}</span>
-          <span className="sm:hidden">Style</span>
-          <button
-            className="text-gray-500 hover:text-gray-700"
-            onClick={() => setClusterStyle("none")}
-            title="Clear style"
-          >
-            ×
-          </button>
-        </span>
-        <span className="px-2 py-0.5 bg-gray-100 border rounded flex items-center gap-1">
-          <span className="hidden sm:inline">Level: {viewLevel}</span>
-          <span className="sm:hidden">Level</span>
-          <button
-            className="text-gray-500 hover:text-gray-700"
-            onClick={() => setViewLevel("overview")}
-            title="Reset to overview"
-          >
-            ×
-          </button>
-        </span>
+        {showOnlyUnlockable && (
+          <span className="px-2 py-0.5 bg-gray-100 border rounded flex items-center gap-1">
+            <span>Only unlockable</span>
+            <button
+              className="text-gray-500 hover:text-gray-700"
+              onClick={() => setShowOnlyUnlockable(false)}
+            >
+              ×
+            </button>
+          </span>
+        )}
       </div>
 
       {/* Main Content Area - Full Height and Width */}
@@ -608,12 +483,113 @@ function AILearningGraphFlow() {
             viewLevel={viewLevel}
             clusterStyle={clusterStyle}
             layoutDirection={layoutDirection}
+            // selection wiring
+            selectedNodeId={selectedNodeId}
+            onSelectNode={setSelectedNodeId}
+            onOpenPanel={(id) => setFocusNodeId(id)}
           />
         )}
       </div>
 
       {/* Keyboard Shortcuts Help */}
       <KeyboardShortcutsPanel />
+
+      {/* Right-side Detail Panel (focus node) */}
+      {focusedTopic && (
+        <div className="absolute right-0 top-0 h-full w-[320px] sm:w-[380px] bg-white/95 backdrop-blur border-l border-gray-200 p-4 overflow-y-auto z-40">
+          <div className="flex items-start justify-between">
+            <div>
+              <div className="text-xs text-gray-500 mb-1">
+                {focusedTopic.cluster}
+              </div>
+              <h2 className="text-base font-semibold text-gray-900 leading-tight">
+                {focusedTopic.label}
+              </h2>
+            </div>
+            <button
+              className="text-gray-400 hover:text-gray-600"
+              onClick={() => setFocusNodeId(null)}
+              title="Close"
+            >
+              ×
+            </button>
+          </div>
+          <div className="mt-3 text-sm text-gray-700">
+            <div className="font-medium mb-1">Dependencies</div>
+            {focusedTopic.deps.length ? (
+              <div className="flex flex-wrap gap-1">
+                {focusedTopic.deps.map((d) => (
+                  <button
+                    key={d}
+                    className="px-2 py-0.5 text-xs bg-gray-100 hover:bg-gray-200 border rounded"
+                    onClick={() => {
+                      setSelectedNodeId(d);
+                      setFocusNodeId(d);
+                    }}
+                    title={`Select ${d}`}
+                  >
+                    {d}
+                  </button>
+                ))}
+              </div>
+            ) : (
+              <div className="text-xs text-gray-500">None</div>
+            )}
+          </div>
+          <div className="mt-3 text-sm text-gray-700">
+            <div className="font-medium mb-1">Dependents</div>
+            {(() => {
+              const dependents = data.nodes.filter((n) =>
+                n.deps.includes(focusedTopic.id)
+              );
+              return dependents.length ? (
+                <div className="flex flex-wrap gap-1">
+                  {dependents.map((n) => (
+                    <button
+                      key={n.id}
+                      className="px-2 py-0.5 text-xs bg-gray-100 hover:bg-gray-200 border rounded"
+                      onClick={() => {
+                        setSelectedNodeId(n.id);
+                        setFocusNodeId(n.id);
+                      }}
+                      title={`Select ${n.id}`}
+                    >
+                      {n.id}
+                    </button>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-xs text-gray-500">None</div>
+              );
+            })()}
+          </div>
+          <div className="mt-4 text-sm text-gray-700">
+            <div className="font-medium mb-1">Progress</div>
+            <div className="flex items-center gap-2">
+              <button
+                className={`px-2 py-1 text-xs border rounded ${
+                  progress.completed[focusedTopic.id]
+                    ? "bg-emerald-50 border-emerald-300"
+                    : "bg-gray-50"
+                }`}
+                onClick={() => toggleComplete(focusedTopic.id)}
+              >
+                {progress.completed[focusedTopic.id]
+                  ? "Mark undone"
+                  : "Mark done"}
+              </button>
+              <div className="flex-1 h-2 bg-gray-200 rounded">
+                <div
+                  className="h-2 bg-emerald-500 rounded"
+                  style={{
+                    width: `${progress.completed[focusedTopic.id] ? 100 : 0}%`,
+                  }}
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Celebration Confetti */}
       <Confetti show={showConfetti} onComplete={() => setShowConfetti(false)} />

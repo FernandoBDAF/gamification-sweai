@@ -1,0 +1,23 @@
+lib/
+  data/
+    graph-types.ts
+    graph-selectors.ts
+    graph-progress.ts
+    graph-deps.ts
+  layout/
+    layout-dagre.ts
+    layout-cluster.ts
+  overlays/
+    cluster-geometry.ts
+    cluster-visual-css.ts
+  build/
+    build-edges.ts
+    build-rf-nodes.ts
+  state/
+    store.ts
+tests/
+  data-selectors.test.ts
+  progress-deps.test.ts
+  layout-dagre.test.ts
+  cluster-geometry.test.ts
+vitest.config.ts

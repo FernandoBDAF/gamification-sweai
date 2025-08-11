@@ -137,14 +137,12 @@ export const ClusterVisualization: React.FC<ClusterVisualizationProps> = ({
                 />
               )}
 
-              {/* Labels style: always show labels regardless of zoom */}
-              {style === "label-positioning" && (
-                <EnhancedClusterLabel
-                  clusterData={cluster}
-                  zoomLevel={zoomLevel}
-                  isHovered={hoveredCluster === clusterId}
-                />
-              )}
+              {/* Always show cluster label with % completion */}
+              <EnhancedClusterLabel
+                clusterData={cluster}
+                zoomLevel={zoomLevel}
+                isHovered={hoveredCluster === clusterId}
+              />
 
               {/* ENHANCED: Show tooltip on hover for all styles */}
               {hoveredCluster === clusterId && (
