@@ -173,8 +173,18 @@ export function progressToColor(baseHex: string, pct: number): string {
 }
 
 // --- Status & unlocks ---
-export const NODE_UNLOCK_THRESHOLD = 1.0;
-export const CLUSTER_UNLOCK_THRESHOLD = 1.0;
+export const NODE_UNLOCK_THRESHOLD = 0.75;
+export const CLUSTER_UNLOCK_THRESHOLD = 0.75;
+
+/** Bucket to 0|25|50|75|100 */
+export function bucketProgressPct(pct: number): 0 | 25 | 50 | 75 | 100 {
+  const p = Math.max(0, Math.min(100, Math.round(pct)));
+  if (p >= 100) return 100;
+  if (p >= 75) return 75;
+  if (p >= 50) return 50;
+  if (p >= 25) return 25;
+  return 0;
+}
 
 /** Backward-compatible signature: (id, deps, completed) */
 export function computeStatus(
@@ -241,7 +251,7 @@ export function isClusterUnlocked(
   clusterId: string,
   nodes: Array<{ id: string; cluster: string; deps: string[] }>,
   completed: Record<string, boolean>,
-  thresholdPct: number = 100
+  thresholdFraction: number = CLUSTER_UNLOCK_THRESHOLD
 ): boolean {
   const prereq = new Set<string>();
   nodes.forEach((n) => {
@@ -262,6 +272,7 @@ export function isClusterUnlocked(
     const done = ids.filter((id) => completed[id]).length;
     pctByCluster[cid] = total ? Math.round((done / total) * 100) : 0;
   });
+  const thresholdPct = Math.round((thresholdFraction || 0) * 100);
   return Array.from(prereq).every(
     (cid) => (pctByCluster[cid] || 0) >= thresholdPct
   );

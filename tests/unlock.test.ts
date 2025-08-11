@@ -13,16 +13,27 @@ const nodes = [
 ] as any;
 
 describe("unlock predicates", () => {
-  it("node unlocks at 100% deps threshold", () => {
-    expect(isNodeUnlockedByThreshold(["A"], { A: false }, 100)).toBe(false);
-    expect(isNodeUnlockedByThreshold(["A"], { A: true }, 100)).toBe(true);
+  it("node unlocks at 75% deps threshold", () => {
+    expect(
+      isNodeUnlockedByThreshold(
+        ["A", "B", "C", "D"],
+        { A: true, B: true, C: false, D: false },
+        75
+      )
+    ).toBe(false);
+    expect(
+      isNodeUnlockedByThreshold(
+        ["A", "B", "C", "D"],
+        { A: true, B: true, C: true, D: false },
+        75
+      )
+    ).toBe(true);
   });
 
-  it("cluster unlocks when prerequisite clusters are complete", () => {
+  it("cluster unlocks when prerequisite clusters are ≥75% complete", () => {
     // C1 requires C2 because Y depends on X
     const completed = { X: true } as Record<string, boolean>;
-    // Only X complete (C2 not fully complete by count, but threshold is per-cluster completion)
-    // With only X in C2, it's 100% complete, so C1 should unlock
-    expect(isClusterUnlocked("C1", nodes, completed, 100)).toBe(true);
+    // With only X in C2, that cluster is 100% by count for this dataset → C1 unlocks at 75%
+    expect(isClusterUnlocked("C1", nodes, completed, 0.75)).toBe(true);
   });
 });

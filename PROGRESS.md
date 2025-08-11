@@ -16,7 +16,7 @@ This file is intentionally neutral to avoid biasing execution. The next engineer
 
 ## 1) Builders & Layout
 
-- [x] Create `lib/build/build-rf-nodes.ts` for React Flow node construction with `data.progressPct` buckets. (Present and used indirectly.)
+- [x] Create `lib/build/build-rf-nodes.ts` for React Flow node construction with `data.progressPct` buckets. (Present and now used.)
 - [x] Ensure `lib/build/build-edges.ts` is the single source for edge styling; migrate usages. (Used in `DependencyGraph`.)
 - [x] Move remaining layout helpers to `lib/layout/dagre.ts` and `lib/layout/align.ts`; update imports. (Re-exported and switched imports.)
 
@@ -66,8 +66,15 @@ This file is intentionally neutral to avoid biasing execution. The next engineer
 
 ---
 
+Follow-up execution prompt tasks status:
+
+- [x] Apply ≥75% unlock thresholds (nodes and clusters). Defaults set; graph uses them; tests updated.
+- [x] Implement progress buckets in nodes. Bucketing helper added; builder computes bucketed `progressPct`.
+- [x] Adopt `buildRFNodes` in the graph. RF node construction now via builder; callbacks injected.
+
 Acceptance notes (this iteration):
 
-- Updated layout imports to `@/lib/layout`, ensured RF zoom lock and free pan, and centralized edge styling via `lib/build/build-edges`.
-- Fixed tests by adding Vitest alias for `@`, improving selectors search exact-id preference, and adding a TopicNode overload for unlock threshold.
-- Storybook builds successfully; Next.js build is green; all tests pass.
+- Thresholds: `NODE_UNLOCK_THRESHOLD` and `CLUSTER_UNLOCK_THRESHOLD` at 0.75; graph no longer hard-codes 1.0/100.
+- Buckets: added `bucketProgressPct`; visual progress now in 0/25/50/75/100.
+- Builder: graph uses `buildRFNodes` and passes expected `CardNode` data.
+- All builds/tests/storybook pass.

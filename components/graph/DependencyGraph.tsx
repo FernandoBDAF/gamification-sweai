@@ -45,6 +45,7 @@ import {
   isClusterUnlocked,
 } from "@/lib/data/graph-progress";
 import { buildEdges as buildStyledEdges } from "@/lib/build/build-edges";
+import { buildRFNodes } from "@/lib/build/build-rf-nodes";
 
 interface DependencyGraphProps {
   nodes: TopicNode[];
@@ -216,8 +217,7 @@ export const DependencyGraph: React.FC<DependencyGraphProps> = ({
         isClusterUnlocked(
           cid,
           nodes.map((n) => ({ id: n.id, cluster: n.cluster, deps: n.deps })),
-          progress.completed,
-          100
+          progress.completed
         )
       )
     );
@@ -228,7 +228,7 @@ export const DependencyGraph: React.FC<DependencyGraphProps> = ({
         node.id,
         node.deps,
         progress.completed,
-        1.0, // 100% deps threshold for MVP
+        undefined,
         !unlockedClusters.has(node.cluster)
       );
     }
@@ -636,40 +636,55 @@ export const DependencyGraph: React.FC<DependencyGraphProps> = ({
   // Convert to ReactFlow format
   const rfNodes: Node<any>[] = useMemo(() => {
     renderCountsRef.current.nodes++;
-    return layoutedNodes.map((node) => {
-      const status = statuses[node.id];
-      const isOnGoalPath = nodesOnGoalPath.has(node.id);
-      let highlightType: "primary" | "dependency" | "dependent" | null = null;
-      if (activeNodeId) {
-        if (node.id === activeNodeId) highlightType = "primary";
-        else if (dependencyIds.has(node.id)) highlightType = "dependency";
-        else if (dependentIds.has(node.id)) highlightType = "dependent";
-      }
-      const progressPct = status === "completed" ? 100 : 0;
-
-      return {
-        id: node.id,
-        type: "card", // Temporarily use simpler card node instead of techTree
-        position: node.position,
-        data: {
-          topic: node.data,
-          status,
-          compact: getSizeVariant() === "compact",
-          reviewed: progress.reviewed?.[node.id] || false,
-          note: progress.notes?.[node.id] || "",
-          goalId,
-          isOnGoalPath,
-          clusterFocused: focusedCluster === node.data.cluster,
-          onToggleDone,
-          onToggleReviewed,
-          onSaveNote,
-          onSetGoal,
-          onClusterFocus: setFocusedCluster,
-          highlightType,
-          progressPct,
+    const positions: Record<
+      string,
+      { id: string; x: number; y: number; width: number; height: number }
+    > = Object.fromEntries(
+      layoutedNodes.map((ln) => [
+        ln.id,
+        {
+          id: ln.id,
+          x: ln.position.x,
+          y: ln.position.y,
+          width: 240,
+          height: 120,
         },
-      };
-    });
+      ])
+    );
+    const highlights = {
+      focus: activeNodeId || undefined,
+      deps: dependencyIds,
+      dependents: dependentIds,
+    } as any;
+    const base = buildRFNodes(
+      layoutedNodes.map((n) => n.data) as any,
+      positions as any,
+      statuses as any,
+      highlights,
+      "card",
+      progress.completed
+    );
+    // Inject callbacks and extra fields for CardNode
+    return base.map((n) => ({
+      ...n,
+      data: {
+        ...n.data,
+        compact: getSizeVariant() === "compact",
+        reviewed: progress.reviewed?.[n.id] || false,
+        note: progress.notes?.[n.id] || "",
+        goalId,
+        isOnGoalPath: nodesOnGoalPath.has(n.id),
+        clusterFocused: focusedCluster === n.data.topic.cluster,
+        onToggleDone,
+        onToggleReviewed,
+        onSaveNote,
+        onSetGoal,
+        onClusterFocus: setFocusedCluster,
+      },
+      position: positions[n.id]
+        ? { x: positions[n.id].x, y: positions[n.id].y }
+        : n.position,
+    })) as any;
   }, [
     layoutedNodes,
     statuses,
