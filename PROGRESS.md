@@ -28,12 +28,12 @@ This file is intentionally neutral to avoid biasing execution. The next engineer
 ## 3) Component Restructure
 
 - [ ] Split `components/graph/DependencyGraph.tsx` into `graph/GraphContainer.tsx` and `graph/GraphViewport.tsx`.
-- [x] Extract `panels/DetailPanel.tsx` (presentational; data via props). (Present.)
-- [ ] Extract presentational atoms under `components/graph/nodes/` and overlays under `components/graph/overlays/`.
+- [x] Extract `panels/DetailPanel.tsx` (presentational; data via props). (Present and now wired.)
+- [x] Extract presentational atoms under `components/graph/nodes/` and overlays under `components/graph/overlays/`. (Overlay imports centralized; no heavy logic in components.)
 
 ## 4) Data I/O Wiring
 
-- [ ] Wire `lib/data/io.ts` into `navbar/MoreMenu.tsx` for Import/Export JSON.
+- [x] Wire `lib/data/io.ts` into `navbar/MoreMenu.tsx` for Import/Export JSON. (MoreMenu added; TopNav uses it.)
 - [x] Persist progress and filters in localStorage (verify existing behavior; keep or refine). (Verified in `AILearningGraph`.)
 
 ## 5) Testing & CI Readiness
@@ -71,10 +71,11 @@ Follow-up execution prompt tasks status:
 - [x] Apply ≥75% unlock thresholds (nodes and clusters). Defaults set; graph uses them; tests updated.
 - [x] Implement progress buckets in nodes. Bucketing helper added; builder computes bucketed `progressPct`.
 - [x] Adopt `buildRFNodes` in the graph. RF node construction now via builder; callbacks injected.
+- [x] Migrate imports to new lib scaffold paths and add re-exports; builds remain green.
+- [x] Wire presentational components: `TopNav` + `MoreMenu` + `DetailPanel` in `AILearningGraph` with identical UX behavior.
 
 Acceptance notes (this iteration):
 
-- Thresholds: `NODE_UNLOCK_THRESHOLD` and `CLUSTER_UNLOCK_THRESHOLD` at 0.75; graph no longer hard-codes 1.0/100.
-- Buckets: added `bucketProgressPct`; visual progress now in 0/25/50/75/100.
-- Builder: graph uses `buildRFNodes` and passes expected `CardNode` data.
-- All builds/tests/storybook pass.
+- Replaced inline top bar with `TopNav` and surfaced `MoreMenu` using `lib/data/io`. JSON import updates node list; export downloads panel JSON.
+- Replaced right-side panel markup with `DetailPanel` passing required props; close button preserved; selection wiring intact.
+- All builds/tests/storybook pass after import migration and overlay constant fixes.

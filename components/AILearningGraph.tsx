@@ -30,9 +30,14 @@ import {
 } from "@/components/panels";
 import { KeyboardShortcutsPanel } from "@/components/panels/KeyboardShortcutsPanel";
 import { Confetti, ResponsiveSidebar, usePanelControls } from "@/components/ui";
+import { TopNav } from "@/components/navbar/TopNav";
+import { MoreMenu } from "@/components/navbar/MoreMenu";
+import { DetailPanel } from "@/components/panels/DetailPanel";
+import { exportPanel, importPanel } from "@/lib/data/io";
 
 function AILearningGraphFlow() {
   const data = graphData as GraphData;
+  const [nodesData, setNodesData] = useState<TopicNode[]>(data.nodes);
   const [progress, setProgress] = useState<ProgressState>(initialProgress);
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
   const [focusNodeId, setFocusNodeId] = useState<string | null>(null);
@@ -45,6 +50,7 @@ function AILearningGraphFlow() {
   const [view, setView] = useState<ViewMode>("tree");
   const [compact, setCompact] = useState<boolean>(false);
   const [showConfetti, setShowConfetti] = useState<boolean>(false);
+  const [moreOpen, setMoreOpen] = useState(false);
 
   // Add missing state for view level and cluster style controls
   const [viewLevel, setViewLevel] = useState<"overview" | "cluster" | "detail">(
@@ -55,7 +61,6 @@ function AILearningGraphFlow() {
 
   // Popovers
   const [clusterMenuOpen, setClusterMenuOpen] = useState(false);
-  const [moreOpen, setMoreOpen] = useState(false);
 
   // Get compact mode from panel controls
   const { compactMode } = usePanelControls();
@@ -188,16 +193,16 @@ function AILearningGraphFlow() {
   ]);
 
   const topicsById = useMemo(
-    () => Object.fromEntries(data.nodes.map((n) => [n.id, n])),
-    [data]
+    () => Object.fromEntries(nodesData.map((n) => [n.id, n])),
+    [nodesData]
   );
 
   // Cluster index for completion badges
   const topicsByCluster = useMemo(() => {
     const map: Record<string, string[]> = {};
-    for (const n of data.nodes) (map[n.cluster] ||= []).push(n.id);
+    for (const n of nodesData) (map[n.cluster] ||= []).push(n.id);
     return map;
-  }, [data]);
+  }, [nodesData]);
 
   const byClusterCompletion = useMemo(
     () => clusterCompletion(progress.completed, topicsByCluster),
@@ -264,7 +269,7 @@ function AILearningGraphFlow() {
 
   // Filter nodes for display (used by both graph and matrix views)
   const filteredNodes = useMemo(() => {
-    return data.nodes.filter((n) => {
+    return nodesData.filter((n) => {
       const status = computeStatus(n.id, n.deps, progress.completed);
       const multiActive = clusterFilters && clusterFilters.length > 0;
       const includeByCluster = multiActive
@@ -285,7 +290,7 @@ function AILearningGraphFlow() {
       );
     });
   }, [
-    data.nodes,
+    nodesData,
     clusterFilter,
     clusterFilters,
     hideCompleted,
@@ -294,7 +299,7 @@ function AILearningGraphFlow() {
     progress.completed,
   ]);
 
-  const totalNodes = data.nodes.length;
+  const totalNodes = nodesData.length;
   const completedCount = Object.values(progress.completed).filter(
     Boolean
   ).length;
@@ -337,102 +342,40 @@ function AILearningGraphFlow() {
   return (
     <div className="h-full min-w-0 flex flex-col overflow-hidden">
       {/* Sticky, compact top bar with wrapping */}
-      <div className="bg-white border-b border-gray-200 flex-shrink-0 sticky top-0 z-30">
-        <div className="flex flex-wrap items-center gap-3 px-3 py-2 min-w-0">
-          {/* Progress Pill (compact) */}
-          <div className="flex items-center gap-3 px-3 py-2 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg border border-blue-200">
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
-                <span className="text-blue-600 font-bold text-sm">
-                  {Math.floor((progress.xp || 0) / 100) + 1}
-                </span>
-              </div>
-              <div>
-                <div className="text-xs font-semibold text-blue-800">
-                  {progress.xp || 0} XP • {completionPct}%
-                </div>
-                <div className="text-xs text-blue-600">
-                  {progress.streakDays || 0} day streak
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Search */}
-          <div className="flex items-center gap-2">
-            <input
-              className="w-56 px-2 py-1.5 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              placeholder="Search topics..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
+      <div className="sticky top-0 z-30">
+        <TopNav
+          searchText={search}
+          onSearchTextChange={setSearch}
+          onOpenFilters={() => setClusterMenuOpen((v) => !v)}
+          onOpenMore={() => setMoreOpen((v) => !v)}
+          xpLabel={`${progress.xp || 0} XP • ${completionPct}%`}
+        />
+        {moreOpen && (
+          <div className="relative">
+            <MoreMenu
+              onExport={() => {
+                const json = exportPanel(nodesData);
+                const blob = new Blob([json], { type: "application/json" });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement("a");
+                a.href = url;
+                a.download = `panel-${new Date()
+                  .toISOString()
+                  .slice(0, 10)}.json`;
+                a.click();
+                URL.revokeObjectURL(url);
+              }}
+              onImport={(json) => {
+                try {
+                  const nodes = importPanel(json);
+                  setNodesData(nodes);
+                  setMoreOpen(false);
+                } catch {}
+              }}
+              onClose={() => setMoreOpen(false)}
             />
-            {search && (
-              <button
-                onClick={() => setSearch("")}
-                className="text-gray-400 hover:text-gray-600"
-                title="Clear search"
-              >
-                ✕
-              </button>
-            )}
           </div>
-
-          {/* Status Filters */}
-          <div className="flex items-center gap-3">
-            <label className="flex items-center gap-2 text-sm">
-              <input
-                type="checkbox"
-                checked={hideCompleted}
-                onChange={(e) => setHideCompleted(e.target.checked)}
-                className="rounded"
-              />
-              <span className="text-gray-700">Hide completed</span>
-            </label>
-            <label className="flex items-center gap-2 text-sm">
-              <input
-                type="checkbox"
-                checked={showOnlyUnlockable}
-                onChange={(e) => setShowOnlyUnlockable(e.target.checked)}
-                className="rounded"
-              />
-              <span className="text-gray-700">Only unlockable</span>
-            </label>
-          </div>
-
-          {/* More menu (import/export) */}
-          <div className="relative ml-auto">
-            <button
-              className="px-2 py-1.5 text-sm border rounded-md bg-white hover:bg-gray-50"
-              onClick={() => setMoreOpen((v) => !v)}
-              aria-expanded={moreOpen}
-            >
-              More
-            </button>
-            {moreOpen && (
-              <div className="absolute right-0 mt-2 w-56 rounded-md border bg-white shadow-lg p-2 z-20">
-                <button
-                  className="w-full text-left px-2 py-1.5 rounded hover:bg-gray-50"
-                  onClick={exportProgress}
-                >
-                  Export Progress
-                </button>
-                <label className="w-full text-left px-2 py-1.5 rounded hover:bg-gray-50 cursor-pointer block">
-                  Import Progress
-                  <input
-                    type="file"
-                    accept=".json"
-                    className="hidden"
-                    onChange={(e) => {
-                      const file = e.target.files?.[0];
-                      if (file) importProgress(file);
-                      setMoreOpen(false);
-                    }}
-                  />
-                </label>
-              </div>
-            )}
-          </div>
-        </div>
+        )}
       </div>
 
       {/* Active Status Chips Row */}
@@ -497,97 +440,26 @@ function AILearningGraphFlow() {
       {/* Right-side Detail Panel (focus node) */}
       {focusedTopic && (
         <div className="absolute right-0 top-0 h-full w-[320px] sm:w-[380px] bg-white/95 backdrop-blur border-l border-gray-200 p-4 overflow-y-auto z-40">
-          <div className="flex items-start justify-between">
-            <div>
-              <div className="text-xs text-gray-500 mb-1">
-                {focusedTopic.cluster}
-              </div>
-              <h2 className="text-base font-semibold text-gray-900 leading-tight">
-                {focusedTopic.label}
-              </h2>
-            </div>
-            <button
-              className="text-gray-400 hover:text-gray-600"
-              onClick={() => setFocusNodeId(null)}
-              title="Close"
-            >
-              ×
-            </button>
-          </div>
-          <div className="mt-3 text-sm text-gray-700">
-            <div className="font-medium mb-1">Dependencies</div>
-            {focusedTopic.deps.length ? (
-              <div className="flex flex-wrap gap-1">
-                {focusedTopic.deps.map((d) => (
-                  <button
-                    key={d}
-                    className="px-2 py-0.5 text-xs bg-gray-100 hover:bg-gray-200 border rounded"
-                    onClick={() => {
-                      setSelectedNodeId(d);
-                      setFocusNodeId(d);
-                    }}
-                    title={`Select ${d}`}
-                  >
-                    {d}
-                  </button>
-                ))}
-              </div>
-            ) : (
-              <div className="text-xs text-gray-500">None</div>
-            )}
-          </div>
-          <div className="mt-3 text-sm text-gray-700">
-            <div className="font-medium mb-1">Dependents</div>
-            {(() => {
-              const dependents = data.nodes.filter((n) =>
-                n.deps.includes(focusedTopic.id)
-              );
-              return dependents.length ? (
-                <div className="flex flex-wrap gap-1">
-                  {dependents.map((n) => (
-                    <button
-                      key={n.id}
-                      className="px-2 py-0.5 text-xs bg-gray-100 hover:bg-gray-200 border rounded"
-                      onClick={() => {
-                        setSelectedNodeId(n.id);
-                        setFocusNodeId(n.id);
-                      }}
-                      title={`Select ${n.id}`}
-                    >
-                      {n.id}
-                    </button>
-                  ))}
-                </div>
-              ) : (
-                <div className="text-xs text-gray-500">None</div>
-              );
-            })()}
-          </div>
-          <div className="mt-4 text-sm text-gray-700">
-            <div className="font-medium mb-1">Progress</div>
-            <div className="flex items-center gap-2">
-              <button
-                className={`px-2 py-1 text-xs border rounded ${
-                  progress.completed[focusedTopic.id]
-                    ? "bg-emerald-50 border-emerald-300"
-                    : "bg-gray-50"
-                }`}
-                onClick={() => toggleComplete(focusedTopic.id)}
-              >
-                {progress.completed[focusedTopic.id]
-                  ? "Mark undone"
-                  : "Mark done"}
-              </button>
-              <div className="flex-1 h-2 bg-gray-200 rounded">
-                <div
-                  className="h-2 bg-emerald-500 rounded"
-                  style={{
-                    width: `${progress.completed[focusedTopic.id] ? 100 : 0}%`,
-                  }}
-                />
-              </div>
-            </div>
-          </div>
+          <DetailPanel
+            title={focusedTopic.label}
+            progressPct={progress.completed[focusedTopic.id] ? 100 : 0}
+            deps={focusedTopic.deps}
+            dependents={nodesData
+              .filter((n) => n.deps.includes(focusedTopic.id))
+              .map((n) => n.id)}
+            onSelectNode={(id) => {
+              setSelectedNodeId(id);
+              setFocusNodeId(id);
+            }}
+            onToggleDone={() => toggleComplete(focusedTopic.id)}
+          />
+          <button
+            className="absolute top-2 right-2 text-gray-400 hover:text-gray-600"
+            onClick={() => setFocusNodeId(null)}
+            title="Close"
+          >
+            ×
+          </button>
         </div>
       )}
 
