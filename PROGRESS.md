@@ -56,7 +56,7 @@ This file is intentionally neutral to avoid biasing execution. The next engineer
 
 ## 8) Optional Dev Snapshots
 
-- [ ] Add `/dev/ui` route with mock data for TopNav, CardNode states, and DetailPanel.
+- [x] Add `/dev/ui` route with mock data for TopNav, CardNode states, and DetailPanel.
 
 ## Definition of Done
 
@@ -78,5 +78,4 @@ Follow-up execution prompt tasks status:
 
 Acceptance notes (this iteration):
 
-- Migrated core UI state to `lib/state/store.ts`: `view`, `viewLevel`, `layoutDirection`, `search`, `selectedNodeId` (focus), `goalId`, `hideCompleted`, `showOnlyUnlockable`, `clusterStyle`. Behavior unchanged.
-- Builds/tests/storybook green.
+- Added `/dev/ui` route showcasing `TopNav`, `CardNode` states (available/completed/locked), and `DetailPanel` with mock data. Build/tests/storybook remain green.
