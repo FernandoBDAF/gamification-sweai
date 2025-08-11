@@ -60,7 +60,7 @@ This file is intentionally neutral to avoid biasing execution. The next engineer
 
 ## Definition of Done
 
-- [ ] All sections above complete; imports use new lib scaffold; `lib/compat.ts` removed.
+- [x] All sections above complete; imports use new lib scaffold; `lib/compat.ts` removed.
 - [x] Build and tests green; UX matches CONTEXT.md and DESIGN.md.
 - [ ] PROGRESS.md reflects completion with brief acceptance notes.
 
@@ -74,10 +74,11 @@ Follow-up execution prompt tasks status:
 - [x] Migrate imports to new lib scaffold paths and add re-exports; builds remain green.
 - [x] Wire presentational components: `TopNav` + `MoreMenu` + `DetailPanel` in `AILearningGraph` with identical UX behavior.
 - [x] Extract remaining logic into `lib/data`: added `lib/data/paths.ts` with `findPathBFS` and `computePredecessorSet` + tests.
+- [x] Cleanup: removed `lib/compat.ts` after verifying no references remained.
 
 Acceptance notes (this iteration):
 
 - Replaced inline top bar with `TopNav` and surfaced `MoreMenu` using `lib/data/io`. JSON import updates node list; export downloads panel JSON.
 - Replaced right-side panel markup with `DetailPanel` passing required props; close button preserved; selection wiring intact.
 - Centralized BFS helpers in `lib/data/paths.ts` with unit tests; all tests continue to pass.
-- All builds/tests/storybook pass after import migration and overlay constant fixes.
+- Removed `lib/compat.ts` per cleanup; all builds/tests/storybook remain green.
