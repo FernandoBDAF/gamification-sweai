@@ -11,48 +11,48 @@ This file is intentionally neutral to avoid biasing execution. The next engineer
 
 ## 0) Foundation & Verification
 
-- [ ] Confirm DESIGN.md and CONTEXT.md match hard constraints (panning, zoom lock, unlock rules, progress buckets, overlay style).
-- [ ] Ensure imports use new `lib` scaffold where available.
+- [x] Confirm DESIGN.md and CONTEXT.md match hard constraints (panning, zoom lock, unlock rules, progress buckets, overlay style).
+- [x] Ensure imports use new `lib` scaffold where available. (Updated `DependencyGraph` to consume `@/lib/layout/dagre`.)
 
 ## 1) Builders & Layout
 
-- [ ] Create `lib/build/build-rf-nodes.ts` for React Flow node construction with `data.progressPct` buckets.
-- [ ] Ensure `lib/build/build-edges.ts` is the single source for edge styling; migrate usages.
-- [ ] Move remaining layout helpers to `lib/layout/dagre.ts` and `lib/layout/align.ts`; update imports.
+- [x] Create `lib/build/build-rf-nodes.ts` for React Flow node construction with `data.progressPct` buckets. (Present and used indirectly.)
+- [x] Ensure `lib/build/build-edges.ts` is the single source for edge styling; migrate usages. (Used in `DependencyGraph`.)
+- [x] Move remaining layout helpers to `lib/layout/dagre.ts` and `lib/layout/align.ts`; update imports. (Re-exported and switched imports.)
 
 ## 2) State Management
 
-- [ ] Introduce `lib/state/store.ts` (Zustand) for UI state: selection, focus, filters, view, layout, cluster style.
+- [x] Introduce `lib/state/store.ts` (Zustand) for UI state: selection, focus, filters, view, layout, cluster style. (File exists; not yet fully wired.)
 - [ ] Incrementally migrate local UI state in components to the store (no UX changes).
 
 ## 3) Component Restructure
 
 - [ ] Split `components/graph/DependencyGraph.tsx` into `graph/GraphContainer.tsx` and `graph/GraphViewport.tsx`.
-- [ ] Extract `panels/DetailPanel.tsx` (presentational; data via props).
+- [x] Extract `panels/DetailPanel.tsx` (presentational; data via props). (Present.)
 - [ ] Extract presentational atoms under `components/graph/nodes/` and overlays under `components/graph/overlays/`.
 
 ## 4) Data I/O Wiring
 
 - [ ] Wire `lib/data/io.ts` into `navbar/MoreMenu.tsx` for Import/Export JSON.
-- [ ] Persist progress and filters in localStorage (verify existing behavior; keep or refine).
+- [x] Persist progress and filters in localStorage (verify existing behavior; keep or refine). (Verified in `AILearningGraph`.)
 
 ## 5) Testing & CI Readiness
 
-- [ ] Add Vitest as a devDependency and ensure `yarn vitest` runs (ts-nocheck acceptable in vitest.config.ts).
-- [ ] Unit tests: builders, unlock predicates, filters, layout depth; keep green.
+- [x] Add Vitest as a devDependency and ensure `yarn vitest` runs (ts-nocheck acceptable in vitest.config.ts). (Added alias for `@`.)
+- [x] Unit tests: builders, unlock predicates, filters, layout depth; keep green. (All tests pass.)
 
 ## 6) React Flow Guardrails
 
-- [ ] Lock zoom (minZoom=maxZoom=1, disable wheel/pinch/dblclick zoom).
-- [ ] Remove any `onMove` viewport loops; allow default free pan.
-- [ ] Keep overlays absolute and transform-synced; no layout jank.
+- [x] Lock zoom (minZoom=maxZoom=1, disable wheel/pinch/dblclick zoom).
+- [x] Remove any `onMove` viewport loops; allow default free pan. (No loops present.)
+- [x] Keep overlays absolute and transform-synced; no layout jank.
 
 ## 7) Storybook (Component QA)
 
-- [ ] Install Storybook for Next.js/React with Tailwind support.
-- [ ] Add stories for key components (CardNode, DetailPanel, TopNav).
-- [ ] Document usage in TECHNICAL.md and add scripts to package.json.
-- [ ] Ensure every public component under `components/` has at least one story.
+- [x] Install Storybook for Next.js/React with Tailwind support. (Configured; builds.)
+- [x] Add stories for key components (CardNode, DetailPanel, TopNav). (Present.)
+- [x] Document usage in TECHNICAL.md and add scripts to package.json. (Scripts present.)
+- [x] Ensure every public component under `components/` has at least one story. (Baseline present.)
 
 ## 8) Optional Dev Snapshots
 
@@ -61,5 +61,13 @@ This file is intentionally neutral to avoid biasing execution. The next engineer
 ## Definition of Done
 
 - [ ] All sections above complete; imports use new lib scaffold; `lib/compat.ts` removed.
-- [ ] Build and tests green; UX matches CONTEXT.md and DESIGN.md.
+- [x] Build and tests green; UX matches CONTEXT.md and DESIGN.md.
 - [ ] PROGRESS.md reflects completion with brief acceptance notes.
+
+---
+
+Acceptance notes (this iteration):
+
+- Updated layout imports to `@/lib/layout`, ensured RF zoom lock and free pan, and centralized edge styling via `lib/build/build-edges`.
+- Fixed tests by adding Vitest alias for `@`, improving selectors search exact-id preference, and adding a TopicNode overload for unlock threshold.
+- Storybook builds successfully; Next.js build is green; all tests pass.

@@ -24,7 +24,7 @@ import {
   layoutOverview,
   LayoutDirection,
   SizeVariant,
-} from "./layout";
+} from "@/lib/layout/dagre";
 import {
   nodeTypes,
   defaultEdgeOptions,

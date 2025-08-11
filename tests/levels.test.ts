@@ -1,6 +1,6 @@
 // tests/levels.test.ts
 import { describe, it, expect } from "vitest";
-import { computeClusterDepths } from "@/components/graph/layout";
+import { computeClusterDepths } from "@/lib/layout/align";
 
 const nodes = [
   { id: "A", label: "A", cluster: "C1", deps: [], xp: 0 },

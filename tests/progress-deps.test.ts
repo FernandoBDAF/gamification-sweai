@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { computeStatus, isNodeUnlockedByThreshold } from "../lib/data/graph-progress";
+import { computeStatus, isNodeUnlockedByThresholdForNode } from "../lib/data/graph-progress";
 import { dependenciesOf, dependentsOf } from "../lib/data/graph-deps";
 import { TopicNode } from "../lib/data/graph-types";
 
@@ -18,8 +18,8 @@ describe("progress & deps", () => {
 
   it("unlock threshold", () => {
     const n: TopicNode = { id: "X", label: "X", cluster: "C1", deps: ["A", "B"] };
-    expect(isNodeUnlockedByThreshold(n, { A: true, B: false }, 50)).toBe(true);
-    expect(isNodeUnlockedByThreshold(n, { A: false, B: false }, 50)).toBe(false);
+    expect(isNodeUnlockedByThresholdForNode(n, { A: true, B: false }, 50)).toBe(true);
+    expect(isNodeUnlockedByThresholdForNode(n, { A: false, B: false }, 50)).toBe(false);
   });
 
   it("deps graph", () => {

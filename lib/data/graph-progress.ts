@@ -1,5 +1,6 @@
 // lib/data/graph-progress.ts
 import { TopicStatus } from "@/lib/types";
+import type { TopicNode } from "./graph-types";
 
 // --- Utility helpers ---
 export function clamp(value: number, min: number, max: number): number {
@@ -221,6 +222,15 @@ export function isNodeUnlockedByThreshold(
 // Convenience overload to accept node-like input
 export function isNodeUnlockedByThresholdNode(
   node: { deps: string[] },
+  completed: Record<string, boolean>,
+  thresholdPct: number
+): boolean {
+  return isNodeUnlockedByThreshold(node.deps || [], completed, thresholdPct);
+}
+
+// Backward-compatible wrapper that accepts a TopicNode as first arg
+export function isNodeUnlockedByThresholdForNode(
+  node: TopicNode,
   completed: Record<string, boolean>,
   thresholdPct: number
 ): boolean {
