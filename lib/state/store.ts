@@ -20,6 +20,12 @@ interface AppState {
   hideCompleted: boolean;
   setHideCompleted: (b: boolean) => void;
 
+  showOnlyUnlockable: boolean;
+  setShowOnlyUnlockable: (b: boolean) => void;
+
+  clusterStyle: string;
+  setClusterStyle: (s: string) => void;
+
   focusNodeId?: NodeId | null;
   setFocusNode: (id: NodeId | null) => void;
 
@@ -45,6 +51,12 @@ export const useAppStore = create<AppState>((set) => ({
 
   hideCompleted: false,
   setHideCompleted: (b) => set({ hideCompleted: b }),
+
+  showOnlyUnlockable: false,
+  setShowOnlyUnlockable: (b) => set({ showOnlyUnlockable: b }),
+
+  clusterStyle: "background",
+  setClusterStyle: (s) => set({ clusterStyle: s }),
 
   focusNodeId: null,
   setFocusNode: (id) => set({ focusNodeId: id }),

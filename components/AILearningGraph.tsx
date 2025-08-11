@@ -34,33 +34,40 @@ import { TopNav } from "@/components/navbar/TopNav";
 import { MoreMenu } from "@/components/navbar/MoreMenu";
 import { DetailPanel } from "@/components/panels/DetailPanel";
 import { exportPanel, importPanel } from "@/lib/data/io";
+import { useAppStore } from "@/lib/state/store";
 
 function AILearningGraphFlow() {
   const data = graphData as GraphData;
   const [nodesData, setNodesData] = useState<TopicNode[]>(data.nodes);
   const [progress, setProgress] = useState<ProgressState>(initialProgress);
-  const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
-  const [focusNodeId, setFocusNodeId] = useState<string | null>(null);
-  const [clusterFilter, setClusterFilter] = useState<string>("ALL");
-  const [clusterFilters, setClusterFilters] = useState<string[]>([]);
-  const [hideCompleted, setHideCompleted] = useState<boolean>(false);
-  const [showOnlyUnlockable, setShowOnlyUnlockable] = useState<boolean>(false);
-  const [goalId, setGoalId] = useState<string>("");
-  const [search, setSearch] = useState<string>("");
-  const [view, setView] = useState<ViewMode>("tree");
+
+  // Zustand store bindings (UI state)
+  const view = useAppStore((s) => s.view);
+  const setView = useAppStore((s) => s.setView);
+  const viewLevel = useAppStore((s) => s.viewLevel);
+  const setViewLevel = useAppStore((s) => s.setViewLevel);
+  const layoutDirection = useAppStore((s) => s.layoutDir);
+  const setLayoutDirection = useAppStore((s) => s.setLayoutDir);
+  const search = useAppStore((s) => s.search);
+  const setSearch = useAppStore((s) => s.setSearch);
+  const selectedNodeId = useAppStore((s) => s.focusNodeId);
+  const setSelectedNodeId = useAppStore((s) => s.setFocusNode);
+  const goalId = useAppStore((s) => s.goalId) || "";
+  const setGoalId = useAppStore((s) => s.setGoalId);
+  const hideCompleted = useAppStore((s) => s.hideCompleted);
+  const setHideCompleted = useAppStore((s) => s.setHideCompleted);
+  const showOnlyUnlockable = useAppStore((s) => s.showOnlyUnlockable);
+  const setShowOnlyUnlockable = useAppStore((s) => s.setShowOnlyUnlockable);
+  const clusterStyle = useAppStore((s) => s.clusterStyle);
+  const setClusterStyle = useAppStore((s) => s.setClusterStyle);
+
+  // Local UI bits
   const [compact, setCompact] = useState<boolean>(false);
   const [showConfetti, setShowConfetti] = useState<boolean>(false);
   const [moreOpen, setMoreOpen] = useState(false);
-
-  // Add missing state for view level and cluster style controls
-  const [viewLevel, setViewLevel] = useState<"overview" | "cluster" | "detail">(
-    "cluster"
-  );
-  const [clusterStyle, setClusterStyle] = useState<string>("background");
-  const [layoutDirection, setLayoutDirection] = useState<"TB" | "LR">("TB");
-
-  // Popovers
   const [clusterMenuOpen, setClusterMenuOpen] = useState(false);
+  const [clusterFilter, setClusterFilter] = useState<string>("ALL");
+  const [clusterFilters, setClusterFilters] = useState<string[]>([]);
 
   // Get compact mode from panel controls
   const { compactMode } = usePanelControls();
@@ -113,7 +120,13 @@ function AILearningGraphFlow() {
         if (parsed.view.clusterStyle) setClusterStyle(parsed.view.clusterStyle);
       }
     } catch {}
-  }, []);
+  }, [
+    setHideCompleted,
+    setShowOnlyUnlockable,
+    setViewLevel,
+    setLayoutDirection,
+    setClusterStyle,
+  ]);
   useEffect(() => {
     try {
       const payload = {
@@ -143,7 +156,6 @@ function AILearningGraphFlow() {
 
       switch (event.key.toLowerCase()) {
         case "f":
-          // Focus search input
           event.preventDefault();
           const searchInput = document.querySelector(
             'input[placeholder*="Search"]'
@@ -174,7 +186,7 @@ function AILearningGraphFlow() {
           event.preventDefault();
           setGoalId("");
           setSearch("");
-          setFocusNodeId(null);
+          setSelectedNodeId(null);
           break;
       }
     };
@@ -189,7 +201,7 @@ function AILearningGraphFlow() {
     setHideCompleted,
     setGoalId,
     setSearch,
-    setFocusNodeId,
+    setSelectedNodeId,
   ]);
 
   const topicsById = useMemo(
@@ -220,7 +232,6 @@ function AILearningGraphFlow() {
         const withXP = awardXP(prev, xpDelta);
         const withStreak = updateDailyStreak(withXP);
 
-        // Trigger confetti for completion (not for undo)
         if (nowCompleted) {
           setShowConfetti(true);
         }
@@ -254,18 +265,19 @@ function AILearningGraphFlow() {
     );
   }, []);
 
-  const handleSetGoal = useCallback((id: string) => {
-    setGoalId(id);
-  }, []);
+  const handleSetGoal = useCallback(
+    (id: string) => {
+      setGoalId(id);
+    },
+    [setGoalId]
+  );
 
   const selectedTopic = useMemo(
     () => (selectedNodeId ? topicsById[selectedNodeId] : undefined),
     [selectedNodeId, topicsById]
   );
-  const focusedTopic = useMemo(
-    () => (focusNodeId ? topicsById[focusNodeId] : undefined),
-    [focusNodeId, topicsById]
-  );
+
+  const focusedTopic = selectedTopic; // share same focus id for details
 
   // Filter nodes for display (used by both graph and matrix views)
   const filteredNodes = useMemo(() => {
@@ -426,10 +438,9 @@ function AILearningGraphFlow() {
             viewLevel={viewLevel}
             clusterStyle={clusterStyle}
             layoutDirection={layoutDirection}
-            // selection wiring
             selectedNodeId={selectedNodeId}
             onSelectNode={setSelectedNodeId}
-            onOpenPanel={(id) => setFocusNodeId(id)}
+            onOpenPanel={(id) => setSelectedNodeId(id)}
           />
         )}
       </div>
@@ -449,13 +460,12 @@ function AILearningGraphFlow() {
               .map((n) => n.id)}
             onSelectNode={(id) => {
               setSelectedNodeId(id);
-              setFocusNodeId(id);
             }}
             onToggleDone={() => toggleComplete(focusedTopic.id)}
           />
           <button
             className="absolute top-2 right-2 text-gray-400 hover:text-gray-600"
-            onClick={() => setFocusNodeId(null)}
+            onClick={() => setSelectedNodeId(null)}
             title="Close"
           >
             ×

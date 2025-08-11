@@ -22,8 +22,8 @@ This file is intentionally neutral to avoid biasing execution. The next engineer
 
 ## 2) State Management
 
-- [x] Introduce `lib/state/store.ts` (Zustand) for UI state: selection, focus, filters, view, layout, cluster style. (File exists; not yet fully wired.)
-- [ ] Incrementally migrate local UI state in components to the store (no UX changes).
+- [x] Introduce `lib/state/store.ts` (Zustand) for UI state: selection, focus, filters, view, layout, cluster style. (File exists; now partially wired.)
+- [ ] Incrementally migrate local UI state in components to the store (no UX changes). (Search, view, viewLevel, layoutDirection, goalId, selectedNodeId, hideCompleted, showOnlyUnlockable, clusterStyle now in store; cluster filter chips remain local.)
 
 ## 3) Component Restructure
 
@@ -78,5 +78,5 @@ Follow-up execution prompt tasks status:
 
 Acceptance notes (this iteration):
 
-- Wired `DependencyGraph` to use `GraphViewport` for the RF canvas while preserving overlays and legend as children. No UX changes.
-- All builds/tests/storybook remain green.
+- Migrated core UI state to `lib/state/store.ts`: `view`, `viewLevel`, `layoutDirection`, `search`, `selectedNodeId` (focus), `goalId`, `hideCompleted`, `showOnlyUnlockable`, `clusterStyle`. Behavior unchanged.
+- Builds/tests/storybook green.
