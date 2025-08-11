@@ -16,7 +16,7 @@ import ReactFlow, {
   Position,
   MarkerType,
 } from "reactflow";
-import { TopicNode, ViewMode } from "@/lib/types";
+import { TopicNode, ViewMode } from "@/lib/utils/types";
 import { ProgressState, computeStatus } from "@/lib/data/graph-progress";
 import {
   layoutDagre,
@@ -39,7 +39,7 @@ import {
   ClusterVisualizationSettings,
 } from "./ClusterVisualization";
 import { ClusterVisualizationStyle } from "@/lib/cluster-visualization";
-import { MAP_CONSTANTS } from "@/lib/map-constants";
+import { MAP_CONSTANTS } from "@/lib/ui/map-tokens";
 import {
   clusterCompletion,
   isClusterUnlocked,

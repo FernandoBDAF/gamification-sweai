@@ -1,8 +1,8 @@
 import React from "react";
 import { Badge, Panel } from "@/components/ui";
 import { UI_CONSTANTS } from "@/lib/ui-constants";
-import { TopicNode } from "@/lib/types";
-import { clusterLabels } from "@/lib/constants";
+import { TopicNode } from "@/lib/utils/types";
+import { clusterLabels } from "@/lib/ui/tokens";
 import { Layers } from "lucide-react";
 
 interface ClusterFilterPanelProps {

@@ -1,5 +1,5 @@
 // lib/data/io.ts
-import type { TopicNode } from "@/lib/types";
+import type { TopicNode } from "@/lib/utils/types";
 
 export function exportPanel(nodes: TopicNode[]): string {
   const payload = { version: 1, nodes };

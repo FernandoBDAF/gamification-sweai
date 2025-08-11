@@ -1,18 +1,18 @@
 import React, { useState, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { TopicNode } from "@/lib/types";
+import { TopicNode } from "@/lib/utils/types";
 import {
-  getClusterLabel,
+  MAP_CONSTANTS,
   getClusterStyle,
-  CLUSTER_STYLE,
-} from "@/lib/map-constants";
+  getClusterLabel,
+} from "@/lib/ui/map-tokens";
 import {
   ClusterVisualizationStyle,
   ClusterVisualizationData,
-  CLUSTER_VIZ_CONSTANTS,
   generateClusterVisualization,
   generateClusterCSS,
   calculateLabelPosition,
+  CLUSTER_VIZ_CONSTANTS,
 } from "@/lib/cluster-visualization";
 import { convexHull, inflateHull, roundedPath } from "@/lib/cluster-geometry";
 
@@ -299,8 +299,11 @@ const ConvexHullShape: React.FC<ConvexHullShapeProps> = ({
     { x: n.x, y: n.y + n.height },
   ]);
   const hull = convexHull(rectCorners);
-  const inflated = inflateHull(hull, CLUSTER_STYLE.HULL_PADDING);
-  const hullPath = roundedPath(inflated, CLUSTER_STYLE.HULL_CORNER_RADIUS);
+  const inflated = inflateHull(hull, CLUSTER_VIZ_CONSTANTS.CONVEX_HULL.PADDING);
+  const hullPath = roundedPath(
+    inflated,
+    CLUSTER_VIZ_CONSTANTS.CONVEX_HULL.CURVE_SMOOTHING
+  );
 
   // Bounds for viewBox
   const xs = inflated.map((p) => p.x);
@@ -314,8 +317,8 @@ const ConvexHullShape: React.FC<ConvexHullShapeProps> = ({
 
   const strokeOpacity = isHovered ? 0.9 : 0.8;
   const fillOpacity = isHovered
-    ? CLUSTER_STYLE.FILL_OPACITY * 1.2
-    : CLUSTER_STYLE.FILL_OPACITY;
+    ? CLUSTER_VIZ_CONSTANTS.CONVEX_HULL.HOVER_FILL_OPACITY
+    : CLUSTER_VIZ_CONSTANTS.CONVEX_HULL.FILL_OPACITY;
 
   if (!hullPath) return null;
 
@@ -330,7 +333,7 @@ const ConvexHullShape: React.FC<ConvexHullShapeProps> = ({
         d={hullPath}
         fill={fillColor}
         stroke={clusterStyle.primary}
-        strokeWidth={CLUSTER_STYLE.STROKE_WIDTH}
+        strokeWidth={CLUSTER_VIZ_CONSTANTS.CONVEX_HULL.STROKE_WIDTH}
         strokeOpacity={strokeOpacity}
         initial={{ pathLength: 0, opacity: 0 }}
         animate={{ pathLength: 1, opacity: 1 }}
@@ -372,8 +375,14 @@ const BlurredHullGlow: React.FC<{
     { x: n.x, y: n.y + n.height },
   ]);
   const hull = convexHull(rectCorners);
-  const inflated = inflateHull(hull, CLUSTER_STYLE.HULL_PADDING + 30);
-  const path = roundedPath(inflated, CLUSTER_STYLE.HULL_CORNER_RADIUS);
+  const inflated = inflateHull(
+    hull,
+    CLUSTER_VIZ_CONSTANTS.CONVEX_HULL.PADDING + 30
+  );
+  const path = roundedPath(
+    inflated,
+    CLUSTER_VIZ_CONSTANTS.CONVEX_HULL.CURVE_SMOOTHING
+  );
 
   // Bounds for viewBox
   const xs = inflated.map((p) => p.x);

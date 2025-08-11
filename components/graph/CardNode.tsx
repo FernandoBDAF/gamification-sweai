@@ -1,4 +1,4 @@
-import React from "react";
+import React, { memo, useMemo } from "react";
 import { motion } from "framer-motion";
 import {
   Trophy,
@@ -8,9 +8,9 @@ import {
   Link as LinkIcon,
   Columns2,
 } from "lucide-react";
-import { TopicNode, TopicStatus } from "@/lib/types";
-import { clusterLabels } from "@/lib/constants";
-import { getClusterStyle } from "@/lib/map-constants";
+import { TopicNode, TopicStatus } from "@/lib/utils/types";
+import { clusterLabels } from "@/lib/ui/tokens";
+import { getClusterStyle, MAP_CONSTANTS } from "@/lib/ui/map-tokens";
 import { NodeProps } from "reactflow";
 import { progressToColor } from "@/lib/data/graph-progress";
 

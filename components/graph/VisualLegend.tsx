@@ -15,11 +15,11 @@ import {
 } from "lucide-react";
 import {
   MAP_CONSTANTS,
+  getClusterLabel,
   getClusterStyle,
   getStatusStyle,
   getXPColor,
-  getClusterLabel,
-} from "@/lib/map-constants";
+} from "@/lib/ui/map-tokens";
 import { Badge } from "@/components/ui";
 
 interface VisualLegendProps {

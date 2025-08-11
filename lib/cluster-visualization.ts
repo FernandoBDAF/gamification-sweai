@@ -1,6 +1,6 @@
 // Cluster Visualization System - Four Distinct Styles
-import { TopicNode } from "@/lib/types";
-import { MAP_CONSTANTS, getClusterStyle } from "@/lib/map-constants";
+import { TopicNode } from "@/lib/utils/types";
+import { MAP_CONSTANTS, getClusterStyle } from "@/lib/ui/map-tokens";
 
 export type ClusterVisualizationStyle =
   | "translucent-background"

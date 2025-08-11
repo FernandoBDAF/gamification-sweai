@@ -239,3 +239,96 @@ Deliverables after finishing all tasks:
 - All public components have stories.
 - `yarn build`, `yarn vitest`, `yarn build-storybook` all pass.
 - `PROGRESS.md` updated with brief acceptance notes.
+
+### Detailed task guides (do these with minimal diffs)
+
+4. Import migration guide (to new lib scaffold)
+
+- Goal: replace deprecated imports without changing behavior.
+- Replace paths:
+  - `@/lib/constants` → `@/lib/ui/tokens`
+  - `@/lib/map-constants` → `@/lib/ui/map-tokens`
+  - `@/lib/cluster-visualization` → `@/lib/ui/cluster-visualization`
+  - `@/lib/types` → `@/lib/utils/types`
+- Steps:
+  1. For each mapping, update imports in `components/**` and `lib/**` files. Do not change symbol names.
+  2. Ensure re-export files exist and compile: `lib/ui/tokens.ts`, `lib/ui/map-tokens.ts`, `lib/ui/cluster-visualization.ts`, `lib/utils/types.ts`.
+  3. Build after each small batch of changes: `yarn build | cat`.
+  4. When no deprecated paths remain, proceed to cleanup task 10.
+- Acceptance:
+  - `grep` shows zero matches for the deprecated paths. Build/storybook/tests are green.
+
+5. Wire presentational components (TopNav and DetailPanel)
+
+- Goal: remove inline UI in `components/AILearningGraph.tsx` and use presentational components.
+- Expected props:
+  - `TopNav` props: `{ onSearch(text: string), onToggleFilters(), onOpenMore(): void }` (extend minimally as needed, keeping presentational role).
+  - `DetailPanel` props: `{ title: string, progressPct: number, deps: string[], dependents: string[], onClose(): void }`.
+- Steps:
+  1. In `components/AILearningGraph.tsx`, locate inline top bar and replace with `<TopNav ... />` wiring existing handlers/state.
+  2. Replace inline right-side panel with `<DetailPanel ... />` receiving data via props; no data fetching inside the component.
+  3. Keep keyboard shortcuts, selection, and `onOpenPanel` behavior unchanged.
+- Acceptance:
+  - Same UX; stories for `TopNav` and `DetailPanel` still render; app compiles.
+
+6. Extract remaining logic into lib/data
+
+- Goal: centralize pathing and filters.
+- BFS path helper:
+  - Create `lib/data/paths.ts` with a pure function:
+    - `export function findPathBFS(nodes: TopicNode[], fromId: string, toId: string): string[]`
+  - Add a small unit test covering a simple path and a no-path case.
+- Filters helper:
+  - Ensure `lib/data/filters.ts` exports pure filter/selectors used by components. Move any remaining inline filter logic here.
+- Acceptance:
+  - Components import from `lib/data/paths` and `lib/data/filters` and contain no BFS logic.
+
+7. JSON import/export via MoreMenu
+
+- Goal: surface `exportPanel`/`importPanel` in the UI without business logic in components.
+- Steps:
+  1. Create `components/navbar/MoreMenu.tsx` with props `{ onExport(): void, onImport(json: string): void }`.
+  2. In `AILearningGraph`, implement `handleExport()` using `exportPanel(nodes)` and trigger download; implement `handleImport(json)` using `importPanel(json)` and update state.
+  3. Add `<MoreMenu onExport={handleExport} onImport={handleImport} />` into `TopNav`.
+  4. Keep file reading UI minimal and presentational; parsing stays in `lib/data/io.ts`.
+- Acceptance:
+  - Export produces JSON; Import replaces panel data; no business logic in components beyond calling lib.
+
+8. Storybook coverage additions
+
+- Goal: stories for all public components.
+- Steps:
+  1. Add stories for `VisualLegend` and cluster label overlay (if public), mirroring usage props.
+  2. Ensure stories import tokens from the new scaffold paths.
+  3. Run `yarn build-storybook | cat`.
+- Acceptance:
+  - Storybook build green; new stories visible.
+
+9. Tests and CI readiness
+
+- Goal: cover new helpers and builders.
+- Steps:
+  1. Add `tests/bucketing.test.ts` covering `bucketProgressPct` mapping to 0/25/50/75/100.
+  2. Add `tests/build-rf-nodes.test.ts` covering a minimal graph input to `buildRFNodes` and asserting `data.progressPct` bucketing and required fields.
+  3. Keep existing unlock tests at 75% passing.
+  4. Run `yarn vitest run --reporter=dot | cat`.
+- Acceptance:
+  - All tests green locally.
+
+10. Cleanup
+
+- Goal: remove compatibility layer after migration.
+- Steps:
+  1. Confirm there are no imports from deprecated paths (`@/lib/constants`, `@/lib/map-constants`, `@/lib/cluster-visualization`, `@/lib/types`).
+  2. Remove `lib/compat.ts`.
+  3. Run the full loop: `yarn build`, `yarn vitest`, `yarn build-storybook`.
+  4. Update `PROGRESS.md` Definition of Done to 100%.
+- Acceptance:
+  - No regressions; all builds/tests green; no deprecated imports remain.
+
+Guardrails reminder (do not regress):
+
+- Do not add any `onMove + setViewport` loops; keep free pan and zoom locked.
+- Keep overlays absolute and transform-synced.
+- Keep `nodeTypes`/`edgeTypes` identities stable across renders.
+- Components stay thin; all logic in `lib/`.

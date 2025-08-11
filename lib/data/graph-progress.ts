@@ -1,5 +1,5 @@
 // lib/data/graph-progress.ts
-import { TopicStatus } from "@/lib/types";
+import { TopicStatus } from "@/lib/utils/types";
 import type { TopicNode } from "./graph-types";
 
 // --- Utility helpers ---

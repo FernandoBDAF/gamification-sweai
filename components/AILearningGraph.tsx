@@ -15,7 +15,7 @@ import {
   updateDailyStreak,
   clusterCompletion,
 } from "@/lib/data/graph-progress";
-import { TopicNode, GraphData, ViewMode } from "@/lib/types";
+import { TopicNode, GraphData, ViewMode } from "@/lib/utils/types";
 
 // Components
 import { DependencyGraph, DependencyMatrix } from "@/components/graph";

@@ -1,7 +1,7 @@
 import { MarkerType, NodeTypes } from "reactflow";
 import { CardNode } from "./CardNode";
 import { TechTreeNode } from "./TechTreeNode";
-import { MAP_CONSTANTS } from "@/lib/map-constants";
+import { MAP_CONSTANTS } from "@/lib/ui/map-tokens";
 
 export { CardNode } from "./CardNode";
 export type { CardNodeData } from "./CardNode";

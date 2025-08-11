@@ -1,5 +1,5 @@
 // lib/data/filters.ts
-import type { TopicNode } from "@/lib/types";
+import type { TopicNode } from "@/lib/utils/types";
 import { computeStatus } from "@/lib/gamification";
 
 export interface FilterOptions {

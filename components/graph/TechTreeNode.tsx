@@ -1,13 +1,13 @@
 import React, { useState, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Trophy, Target, Lock, Zap, CheckCircle, Star } from "lucide-react";
-import { TopicNode } from "@/lib/types";
+import { TopicNode } from "@/lib/utils/types";
 import {
   MAP_CONSTANTS,
   getClusterStyle,
   getStatusStyle,
   getXPColor,
-} from "@/lib/map-constants";
+} from "@/lib/ui/map-tokens";
 import { Tooltip } from "@/components/ui";
 
 export interface TechTreeNodeData {

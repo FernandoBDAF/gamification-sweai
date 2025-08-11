@@ -1,2 +1,9 @@
 // lib/ui/cluster-visualization.ts
-export * from "../cluster-visualization";
+export {
+  CLUSTER_VIZ_CONSTANTS,
+  calculateClusterBounds,
+  calculateLabelPosition,
+  generateClusterCSS,
+  generateClusterVisualization,
+  generateConvexHullPath,
+} from "../cluster-visualization";

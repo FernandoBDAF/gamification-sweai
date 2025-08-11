@@ -1,6 +1,6 @@
 import dagre from "dagre";
-import { TopicNode } from "@/lib/types";
-import { MAP_CONSTANTS } from "@/lib/map-constants";
+import { TopicNode } from "@/lib/utils/types";
+import { MAP_CONSTANTS } from "@/lib/ui/map-tokens";
 
 export type LayoutDirection = "TB" | "BT" | "LR" | "RL";
 export type SizeVariant = "compact" | "standard" | "expanded";

@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from "react";
 import { ArrowUpDown, Search } from "lucide-react";
-import { TopicNode } from "@/lib/types";
-import { clusterLabels } from "@/lib/constants";
+import { TopicNode } from "@/lib/utils/types";
+import { clusterLabels } from "@/lib/ui/tokens";
 
 interface DependencyMatrixProps {
   nodes: TopicNode[];
@@ -12,31 +12,35 @@ export const DependencyMatrix: React.FC<DependencyMatrixProps> = ({
   nodes,
   topicsById,
 }) => {
-  const [sortBy, setSortBy] = useState<"id" | "cluster" | "dependencies">("cluster");
+  const [sortBy, setSortBy] = useState<"id" | "cluster" | "dependencies">(
+    "cluster"
+  );
   const [searchTerm, setSearchTerm] = useState("");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
 
   const filteredAndSortedNodes = useMemo(() => {
-    let filtered = nodes.filter(node => 
-      node.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      node.label.toLowerCase().includes(searchTerm.toLowerCase())
+    let filtered = nodes.filter(
+      (node) =>
+        node.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        node.label.toLowerCase().includes(searchTerm.toLowerCase())
     );
 
     return filtered.sort((a, b) => {
       let comparison = 0;
-      
+
       switch (sortBy) {
         case "id":
           comparison = a.id.localeCompare(b.id);
           break;
         case "cluster":
-          comparison = a.cluster.localeCompare(b.cluster) || a.id.localeCompare(b.id);
+          comparison =
+            a.cluster.localeCompare(b.cluster) || a.id.localeCompare(b.id);
           break;
         case "dependencies":
           comparison = a.deps.length - b.deps.length;
           break;
       }
-      
+
       return sortOrder === "desc" ? -comparison : comparison;
     });
   }, [nodes, searchTerm, sortBy, sortOrder]);
@@ -67,27 +71,34 @@ export const DependencyMatrix: React.FC<DependencyMatrixProps> = ({
               onChange={(e) => setSearchTerm(e.target.value)}
             />
           </div>
-          
+
           <div className="flex gap-2">
             <button
               onClick={() => handleSort("cluster")}
-              className={`btn text-xs px-2 py-1 ${sortBy === "cluster" ? "btn-primary" : "btn-outline"}`}
+              className={`btn text-xs px-2 py-1 ${
+                sortBy === "cluster" ? "btn-primary" : "btn-outline"
+              }`}
             >
               <ArrowUpDown className="w-3 h-3 mr-1" />
-              Cluster {sortBy === "cluster" && (sortOrder === "asc" ? "↑" : "↓")}
+              Cluster{" "}
+              {sortBy === "cluster" && (sortOrder === "asc" ? "↑" : "↓")}
             </button>
             <button
               onClick={() => handleSort("dependencies")}
-              className={`btn text-xs px-2 py-1 ${sortBy === "dependencies" ? "btn-primary" : "btn-outline"}`}
+              className={`btn text-xs px-2 py-1 ${
+                sortBy === "dependencies" ? "btn-primary" : "btn-outline"
+              }`}
             >
               <ArrowUpDown className="w-3 h-3 mr-1" />
-              Deps {sortBy === "dependencies" && (sortOrder === "asc" ? "↑" : "↓")}
+              Deps{" "}
+              {sortBy === "dependencies" && (sortOrder === "asc" ? "↑" : "↓")}
             </button>
           </div>
         </div>
-        
+
         <div className="mt-2 text-sm text-neutral-600">
-          Dependency Table ({filteredAndSortedNodes.length} topics) - Rows depend on columns
+          Dependency Table ({filteredAndSortedNodes.length} topics) - Rows
+          depend on columns
         </div>
       </div>
 
@@ -99,11 +110,16 @@ export const DependencyMatrix: React.FC<DependencyMatrixProps> = ({
               <th className="sticky left-0 bg-gray-50 border border-gray-200 px-2 py-2 text-left font-medium min-w-[200px]">
                 <div className="flex flex-col">
                   <span className="font-semibold">Topic</span>
-                  <span className="text-xs text-gray-500 font-normal">Cluster</span>
+                  <span className="text-xs text-gray-500 font-normal">
+                    Cluster
+                  </span>
                 </div>
               </th>
               {headers.map((h) => (
-                <th key={h} className="border border-gray-200 px-1 py-2 text-center min-w-[60px]">
+                <th
+                  key={h}
+                  className="border border-gray-200 px-1 py-2 text-center min-w-[60px]"
+                >
                   <div className="transform -rotate-90 whitespace-nowrap text-xs">
                     {h}
                   </div>
@@ -126,10 +142,15 @@ export const DependencyMatrix: React.FC<DependencyMatrixProps> = ({
                   </div>
                 </td>
                 {headers.map((col) => (
-                  <td key={col} className="border border-gray-200 px-2 py-2 text-center">
+                  <td
+                    key={col}
+                    className="border border-gray-200 px-2 py-2 text-center"
+                  >
                     {isDep(row.id, col) ? (
-                      <span className="inline-block w-4 h-4 bg-blue-500 rounded-full" title={`${row.id} depends on ${col}`}>
-                      </span>
+                      <span
+                        className="inline-block w-4 h-4 bg-blue-500 rounded-full"
+                        title={`${row.id} depends on ${col}`}
+                      ></span>
                     ) : (
                       <span className="text-gray-300">•</span>
                     )}
@@ -140,7 +161,7 @@ export const DependencyMatrix: React.FC<DependencyMatrixProps> = ({
           </tbody>
         </table>
       </div>
-      
+
       {filteredAndSortedNodes.length === 0 && searchTerm && (
         <div className="flex items-center justify-center h-32 text-gray-500">
           No topics found matching "{searchTerm}"

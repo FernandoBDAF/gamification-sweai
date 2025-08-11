@@ -1,6 +1,6 @@
 import React from "react";
 import { Eye, Grid, Table, Minimize2, Maximize2 } from "lucide-react";
-import { ViewMode } from "@/lib/types";
+import { ViewMode } from "@/lib/utils/types";
 import { Button, Panel, usePanelControls } from "@/components/ui";
 
 interface ViewPanelProps {

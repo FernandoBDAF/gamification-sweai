@@ -1,5 +1,5 @@
 import React from "react";
-import { clusterLabels } from "@/lib/constants";
+import { clusterLabels } from "@/lib/ui/tokens";
 import { Badge, Panel, Tooltip } from "@/components/ui";
 import { UI_CONSTANTS, getMedalInfo } from "@/lib/ui-constants";
 import { Award } from "lucide-react";

@@ -1,7 +1,7 @@
 import React from "react";
 import { Badge, Panel } from "@/components/ui";
 import { UI_CONSTANTS } from "@/lib/ui-constants";
-import { TopicNode } from "@/lib/types";
+import { TopicNode } from "@/lib/utils/types";
 import { Target } from "lucide-react";
 
 interface GoalPanelProps {
