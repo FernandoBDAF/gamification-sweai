@@ -27,7 +27,7 @@ This file is intentionally neutral to avoid biasing execution. The next engineer
 
 ## 3) Component Restructure
 
-- [ ] Split `components/graph/DependencyGraph.tsx` into `graph/GraphContainer.tsx` and `graph/GraphViewport.tsx`.
+- [ ] Split `components/graph/DependencyGraph.tsx` into `graph/GraphContainer.tsx` and `graph/GraphViewport.tsx`. (Files created; wiring pending minimal diff in a follow-up.)
 - [x] Extract `panels/DetailPanel.tsx` (presentational; data via props). (Present and now wired.)
 - [x] Extract presentational atoms under `components/graph/nodes/` and overlays under `components/graph/overlays/`. (Overlay imports centralized; no heavy logic in components.)
 
@@ -78,7 +78,5 @@ Follow-up execution prompt tasks status:
 
 Acceptance notes (this iteration):
 
-- Replaced inline top bar with `TopNav` and surfaced `MoreMenu` using `lib/data/io`. JSON import updates node list; export downloads panel JSON.
-- Replaced right-side panel markup with `DetailPanel` passing required props; close button preserved; selection wiring intact.
-- Centralized BFS helpers in `lib/data/paths.ts` with unit tests; all tests continue to pass.
-- Removed `lib/compat.ts` per cleanup; all builds/tests/storybook remain green.
+- Created `GraphViewport` and `GraphContainer` (presentational and thin orchestration); will switch `DependencyGraph` to use them with minimal diffs next.
+- All builds/tests/storybook remain green.
